@@ -106,11 +106,38 @@ func (m *Manager) Cancel(channelID string) error {
 	return m.acpClient.CancelAgent(sess.AgentName)
 }
 
+// StartAt resets the channel and starts a new agent at the given cwd.
+func (m *Manager) StartAt(channelID, cwd string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Stop existing worker/agent
+	if w, ok := m.workers[channelID]; ok {
+		w.Stop()
+		delete(m.workers, channelID)
+	}
+	if sess, ok := m.store.Get(channelID); ok {
+		_ = m.acpClient.StopAgent(sess.AgentName)
+	}
+	// Store cwd so ensureWorker picks it up
+	_ = m.store.Set(channelID, &Session{CWD: cwd})
+
+	_, err := m.startAgentAndWorker(channelID)
+	return err
+}
+
+// CWD returns the current working directory for a channel.
+func (m *Manager) CWD(channelID string) string {
+	if sess, ok := m.store.Get(channelID); ok && sess.CWD != "" {
+		return "Current CWD: `" + sess.CWD + "`"
+	}
+	return "Current CWD: `" + m.defaultCWD + "` (default)"
+}
+
 // SetCWD updates the working directory for a channel (takes effect on next reset).
 func (m *Manager) SetCWD(channelID, cwd string) error {
 	sess, ok := m.store.Get(channelID)
 	if !ok {
-		// Store a placeholder session with just the cwd
 		return m.store.Set(channelID, &Session{CWD: cwd})
 	}
 	sess.CWD = cwd

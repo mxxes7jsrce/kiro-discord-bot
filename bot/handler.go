@@ -37,13 +37,21 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		ds.ChannelMessageSend(m.ChannelID, "⚠️ Cancel requested.")
 
-	case strings.HasPrefix(content, "!cwd "):
-		cwd := strings.TrimPrefix(content, "!cwd ")
-		if err := b.manager.SetCWD(m.ChannelID, cwd); err != nil {
+	case content == "!cwd":
+		ds.ChannelMessageSend(m.ChannelID, b.manager.CWD(m.ChannelID))
+
+	case strings.HasPrefix(content, "!start "):
+		cwd := strings.TrimSpace(strings.TrimPrefix(content, "!start "))
+		if cwd == "" {
+			ds.ChannelMessageSend(m.ChannelID, "Usage: `!start /path/to/project`")
+			return
+		}
+		ds.ChannelMessageSend(m.ChannelID, "⏳ Starting agent at `"+cwd+"`...")
+		if err := b.manager.StartAt(m.ChannelID, cwd); err != nil {
 			ds.ChannelMessageSend(m.ChannelID, "❌ "+err.Error())
 			return
 		}
-		ds.ChannelMessageSend(m.ChannelID, "✅ CWD set to `"+cwd+"` (takes effect on next `!reset`)")
+		ds.ChannelMessageSend(m.ChannelID, "✅ Agent started at `"+cwd+"`")
 
 	default:
 		// Regular prompt → enqueue
