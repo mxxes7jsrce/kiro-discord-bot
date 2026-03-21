@@ -1,0 +1,35 @@
+services:
+  acp-bridge:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install -g acp-bridge && acp-bridged"
+    environment:
+      - ACP_BRIDGE_PORT=7800
+      - ACP_BRIDGE_HOST=0.0.0.0
+    volumes:
+      - ${HOME}/.kiro:/root/.kiro          # kiro login + sessions
+      - ${PROJECTS_DIR:-/projects}:/projects
+    restart: unless-stopped
+    network_mode: host                      # kiro-cli 需要存取 AWS Bedrock
+
+  discord-bot:
+    build: .
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - ACP_BRIDGE_URL=http://localhost:7800
+      - KIRO_CLI_PATH=${KIRO_CLI_PATH:-/root/.local/bin/kiro-cli}
+      - DEFAULT_CWD=/projects
+      - DATA_DIR=/data
+      - ASK_TIMEOUT_SEC=${ASK_TIMEOUT_SEC:-300}
+      - STREAM_UPDATE_SEC=3
+    volumes:
+      - bot-data:/data
+      - ${HOME}/.kiro:/root/.kiro
+      - ${PROJECTS_DIR:-/projects}:/projects
+    network_mode: host
+    depends_on:
+      - acp-bridge
+    restart: unless-stopped
+
+volumes:
+  bot-data:
