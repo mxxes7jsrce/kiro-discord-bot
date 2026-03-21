@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/jianghongjun/kiro-discord-bot/acp"
+	"github.com/nczz/kiro-discord-bot/acp"
 )
 
 // Job represents a single user message to be processed.
@@ -85,8 +85,11 @@ func (w *Worker) execute(job *Job) {
 	// ⏳ → 🔄
 	swapReaction(ds, job.ChannelID, job.MessageID, "⏳", "🔄")
 
-	// Send placeholder reply
-	replyMsg, err := ds.ChannelMessageSend(job.ChannelID, "🔄 處理中...")
+	// Send placeholder as reply to user message
+	replyMsg, err := ds.ChannelMessageSendReply(job.ChannelID, "🔄 處理中...", &discordgo.MessageReference{
+		MessageID: job.MessageID,
+		ChannelID: job.ChannelID,
+	})
 	if err != nil {
 		log.Printf("[worker %s] send placeholder: %v", w.channelID, err)
 		swapReaction(ds, job.ChannelID, job.MessageID, "🔄", "❌")
@@ -96,23 +99,32 @@ func (w *Worker) execute(job *Job) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(w.askTimeoutSec)*time.Second)
 	defer cancel()
 
-	// Accumulate streamed text; update Discord message periodically
 	var mu sync.Mutex
 	accumulated := ""
 	lastUpdate := time.Now()
+	statusLine := "🔄 處理中..."
 
 	onChunk := func(chunk string) {
 		mu.Lock()
 		accumulated += chunk
+		// Detect tool usage from chunk content
+		lower := strings.ToLower(chunk)
+		for _, kw := range []string{"running tool", "bash", "read_file", "write_file", "fs_read", "fs_write", "execute"} {
+			if strings.Contains(lower, kw) {
+				statusLine = "⚙️ 執行工具中..."
+				break
+			}
+		}
 		shouldUpdate := time.Since(lastUpdate) >= time.Duration(w.streamUpdateSec)*time.Second
 		snap := accumulated
+		status := statusLine
 		mu.Unlock()
 
 		if shouldUpdate {
 			mu.Lock()
 			lastUpdate = time.Now()
 			mu.Unlock()
-			editMessage(ds, job.ChannelID, replyMsg.ID, "🔄 處理中...\n\n"+snap)
+			editMessage(ds, job.ChannelID, replyMsg.ID, status+"\n\n"+snap)
 		}
 	}
 

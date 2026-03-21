@@ -14,6 +14,7 @@ type Config struct {
 	QueueBufferSize int
 	DataDir         string
 	StreamUpdateSec int
+	DiscordGuildID  string
 }
 
 func loadConfig() *Config {
@@ -26,6 +27,7 @@ func loadConfig() *Config {
 		QueueBufferSize: envInt("QUEUE_BUFFER_SIZE", 20),
 		DataDir:         envOr("DATA_DIR", "./data"),
 		StreamUpdateSec: envInt("STREAM_UPDATE_SEC", 3),
+		DiscordGuildID:  envOr("DISCORD_GUILD_ID", ""),
 	}
 }
 

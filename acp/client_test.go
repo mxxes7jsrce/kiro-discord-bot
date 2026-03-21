@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jianghongjun/kiro-discord-bot/acp"
+	"github.com/nczz/kiro-discord-bot/acp"
 )
 
 // Integration tests — require acp-bridge running at ACP_BRIDGE_URL

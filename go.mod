@@ -1,4 +1,4 @@
-module github.com/jianghongjun/kiro-discord-bot
+module github.com/nczz/kiro-discord-bot
 
 go 1.25.4
 

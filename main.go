@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/jianghongjun/kiro-discord-bot/bot"
+	"github.com/nczz/kiro-discord-bot/bot"
 )
 
 func main() {
@@ -21,6 +21,7 @@ func main() {
 		QueueBufferSize: cfg.QueueBufferSize,
 		AskTimeoutSec:   cfg.AskTimeoutSec,
 		StreamUpdateSec: cfg.StreamUpdateSec,
+		GuildID:         cfg.DiscordGuildID,
 	})
 	if err != nil {
 		log.Fatal(err)

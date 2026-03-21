@@ -30,6 +30,7 @@ type AgentStatus struct {
 	State     string `json:"state"`
 	SessionID string `json:"sessionId"`
 	LastError string `json:"lastError"`
+	LastText  string `json:"lastText"`
 }
 
 // StartAgent starts a new kiro agent via POST /agents
@@ -38,7 +39,7 @@ func (c *Client) StartAgent(name, kiroCLI, cwd string) (*AgentStatus, error) {
 		"type":    "kiro",
 		"name":    name,
 		"command": kiroCLI,
-		"args":    []string{"acp"},
+		"args":    []string{"acp", "--trust-all-tools"},
 		"cwd":     cwd,
 	})
 	resp, err := c.httpClient.Post(c.baseURL+"/agents", "application/json", bytes.NewReader(body))

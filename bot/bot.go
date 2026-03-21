@@ -1,14 +1,17 @@
 package bot
 
 import (
+	"log"
+
 	"github.com/bwmarrin/discordgo"
-	"github.com/jianghongjun/kiro-discord-bot/acp"
-	"github.com/jianghongjun/kiro-discord-bot/channel"
+	"github.com/nczz/kiro-discord-bot/acp"
+	"github.com/nczz/kiro-discord-bot/channel"
 )
 
 type Bot struct {
 	discord *discordgo.Session
 	manager *channel.Manager
+	guildID string
 }
 
 func New(cfg interface{ GetBotConfig() BotConfig }) (*Bot, error) {
@@ -24,6 +27,7 @@ type BotConfig struct {
 	QueueBufferSize int
 	AskTimeoutSec   int
 	StreamUpdateSec int
+	GuildID         string
 }
 
 func NewFromConfig(cfg BotConfig) (*Bot, error) {
@@ -31,7 +35,7 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 	if err != nil {
 		return nil, err
 	}
-	ds.Identify.Intents = discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages
+	ds.Identify.Intents = discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages | discordgo.IntentsGuildMessageReactions | discordgo.IntentsMessageContent
 
 	acpClient := acp.NewClient(cfg.AcpBridgeURL)
 
@@ -46,12 +50,24 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 		cfg.QueueBufferSize, cfg.AskTimeoutSec, cfg.StreamUpdateSec,
 	)
 
-	b := &Bot{discord: ds, manager: manager}
+	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID}
 	ds.AddHandler(b.handleMessage)
+	ds.AddHandler(b.handleInteraction)
+	ds.AddHandler(func(s *discordgo.Session, e *discordgo.InteractionCreate) {
+		log.Printf("[debug] InteractionCreate type=%d", e.Type)
+	})
+	ds.AddHandler(func(s *discordgo.Session, e *discordgo.MessageCreate) {
+		log.Printf("[debug] MessageCreate from=%s content=%q", e.Author.Username, e.Content)
+	})
 	return b, nil
 }
 
 func (b *Bot) Start() error {
+	b.discord.AddHandler(func(ds *discordgo.Session, r *discordgo.Ready) {
+		log.Printf("Bot running as %s#%s", r.User.Username, r.User.Discriminator)
+		_ = ds.UpdateGameStatus(0, "kiro-cli agent")
+		b.registerSlashCommands()
+	})
 	return b.discord.Open()
 }
 

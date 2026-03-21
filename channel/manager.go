@@ -6,13 +6,14 @@ import (
 	"sync"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/jianghongjun/kiro-discord-bot/acp"
+	"github.com/nczz/kiro-discord-bot/acp"
 )
 
 // Manager manages per-channel sessions and workers.
 type Manager struct {
 	mu              sync.Mutex
 	workers         map[string]*Worker
+	paused          map[string]bool
 	store           *SessionStore
 	acpClient       *acp.Client
 	kiroCLI         string
@@ -25,6 +26,7 @@ type Manager struct {
 func NewManager(store *SessionStore, acpClient *acp.Client, kiroCLI, defaultCWD string, queueBufSize, askTimeoutSec, streamUpdateSec int) *Manager {
 	return &Manager{
 		workers:         make(map[string]*Worker),
+		paused:          make(map[string]bool),
 		store:           store,
 		acpClient:       acpClient,
 		kiroCLI:         kiroCLI,
@@ -50,8 +52,14 @@ func (m *Manager) Enqueue(ds *discordgo.Session, job *Job) error {
 		return fmt.Errorf("queue full (%d jobs pending)", worker.QueueLen())
 	}
 
-	// Add ⏳ reaction to user message
+	qLen := worker.QueueLen()
 	_ = ds.MessageReactionAdd(job.ChannelID, job.MessageID, "⏳")
+	if qLen > 1 {
+		_, _ = ds.ChannelMessageSendReply(job.ChannelID, fmt.Sprintf("⏳ 排隊中（第 %d 位）", qLen), &discordgo.MessageReference{
+			MessageID: job.MessageID,
+			ChannelID: job.ChannelID,
+		})
+	}
 	return nil
 }
 
@@ -173,7 +181,8 @@ func (m *Manager) startAgentAndWorker(channelID string) (*Worker, error) {
 		cwd = sess.CWD
 	}
 
-	// Stop any existing agent with same name (best effort)
+	// Cancel + stop any existing agent with same name (best effort)
+	_ = m.acpClient.CancelAgent(agentName)
 	_ = m.acpClient.StopAgent(agentName)
 
 	status, err := m.acpClient.StartAgent(agentName, m.kiroCLI, cwd)
@@ -193,4 +202,35 @@ func (m *Manager) startAgentAndWorker(channelID string) (*Worker, error) {
 	w.Start()
 	m.workers[channelID] = w
 	return w, nil
+}
+
+// GetSession returns the session for a channel.
+func (m *Manager) GetSession(channelID string) (*Session, bool) {
+	return m.store.Get(channelID)
+}
+
+// GetAgentStatus returns the acp agent status.
+func (m *Manager) GetAgentStatus(agentName string) (*acp.AgentStatus, error) {
+	return m.acpClient.GetAgent(agentName)
+}
+
+// Pause sets the channel to mention-only mode.
+func (m *Manager) Pause(channelID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.paused[channelID] = true
+}
+
+// Back sets the channel back to full-listen mode.
+func (m *Manager) Back(channelID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.paused[channelID] = false
+}
+
+// IsPaused returns true if the channel is in mention-only mode.
+func (m *Manager) IsPaused(channelID string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.paused[channelID]
 }
