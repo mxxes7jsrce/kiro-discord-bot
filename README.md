@@ -1,143 +1,214 @@
 # kiro-discord-bot
 
-**建立日期：** 2026-03-21  
-**語言：** Go  
-**目的：** 以 Discord channel 為單位，透過 acp-bridge 與 kiro-cli 進行 agent 對話，支援任務排隊、進度回饋。
+A Discord bot that bridges Discord channels to [kiro-cli](https://kiro.dev) AI agents via [acp-bridge](https://www.npmjs.com/package/acp-bridge). Each channel gets its own agent session and job queue.
+
+**Created:** 2026-03-21 | **Language:** Go
 
 ---
 
-## 一、系統架構
+## Deployment Guide
+
+### Prerequisites
+
+- Go 1.21+
+- Node.js 20+ (for acp-bridge)
+- [kiro-cli](https://cli.kiro.dev/install) installed and logged in
+- A Discord bot token with the following:
+  - Scopes: `bot`, `applications.commands`
+  - Permissions: View Channels, Send Messages, Add Reactions, Read Message History
+  - Privileged Intents: **Message Content Intent** enabled
+
+---
+
+### 1. Create a Discord Bot
+
+1. Go to [Discord Developer Portal](https://discord.com/developers/applications) → New Application
+2. **Bot** tab → Reset Token → copy the token
+3. **Bot** tab → Privileged Gateway Intents → enable **Message Content Intent**
+4. **OAuth2** tab → URL Generator → select scopes: `bot` + `applications.commands`
+5. Select permissions: View Channels, Send Messages, Add Reactions, Read Message History
+6. Open the generated URL to invite the bot to your server
+7. Note your **Guild ID** (right-click server → Copy Server ID, requires Developer Mode)
+
+---
+
+### 2. Install acp-bridge
+
+```bash
+npm install -g acp-bridge
+acp-bridged --version
+```
+
+---
+
+### 3. Install kiro-cli and Log In
+
+```bash
+curl -fsSL https://cli.kiro.dev/install | bash
+export PATH="$HOME/.local/bin:$PATH"
+kiro-cli login
+```
+
+---
+
+### 4. Clone and Configure
+
+```bash
+git clone https://github.com/nczz/kiro-discord-bot.git
+cd kiro-discord-bot
+
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```env
+DISCORD_TOKEN=your-bot-token
+DISCORD_GUILD_ID=your-guild-id
+ACP_BRIDGE_URL=http://localhost:7800
+KIRO_CLI_PATH=/home/user/.local/bin/kiro-cli
+DEFAULT_CWD=/projects
+DATA_DIR=/tmp/kiro-bot-data
+ASK_TIMEOUT_SEC=300
+STREAM_UPDATE_SEC=3
+```
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DISCORD_TOKEN` | Discord bot token | required |
+| `DISCORD_GUILD_ID` | Guild ID for instant slash command registration | required |
+| `ACP_BRIDGE_URL` | acp-bridge daemon URL | `http://localhost:7800` |
+| `KIRO_CLI_PATH` | Full path to kiro-cli binary | `kiro-cli` |
+| `DEFAULT_CWD` | Default working directory for agents | `/projects` |
+| `DATA_DIR` | Directory for sessions.json | `./data` |
+| `ASK_TIMEOUT_SEC` | Agent response timeout in seconds | `300` |
+| `STREAM_UPDATE_SEC` | Discord message update interval during streaming | `3` |
+
+---
+
+### 5. Start (Local)
+
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+The script:
+- Skips restart if bot is already running
+- Starts acp-bridge with auto-restart watchdog
+- Builds and starts the bot with auto-restart watchdog
+- Reads all config from `.env`
+
+To force restart:
+```bash
+pkill -f kiro-discord-bot && pkill -f acp-bridged
+./start.sh
+```
+
+---
+
+### 6. Deploy with Docker
+
+```bash
+docker compose up -d --build
+```
+
+`docker-compose.yml` uses `network_mode: host` and mounts `~/.kiro` so the bot inherits your kiro login and MCP settings.
+
+---
+
+### 7. Grant Channel Permissions
+
+The bot needs explicit permission in each channel it should respond to:
+
+1. Right-click the channel → Edit Channel → Permissions
+2. Add the bot role/user
+3. Enable: View Channel, Send Messages, Add Reactions, Read Message History
+
+---
+
+## Usage
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `/start <cwd>` | Bind channel to a project directory and start agent |
+| `/reset` | Restart the agent for this channel |
+| `/status` | Show agent state, queue length, session ID |
+| `/cancel` | Cancel the currently running task |
+| `/cwd` | Show current working directory |
+| `/pause` | Switch to mention-only mode (bot ignores non-mention messages) |
+| `/back` | Resume full-listen mode |
+
+All commands also work with `!` prefix (e.g. `!status`, `!reset`).
+
+### Sending Tasks
+
+**Full-listen mode (default):** Any message in the channel is sent to the agent.
+
+**Mention mode (after `/pause`):** Only `@BotName your message` triggers the agent.
+
+### Status Indicators
+
+| Reaction | Meaning |
+|----------|---------|
+| ⏳ | Queued |
+| 🔄 | Processing |
+| ⚙️ | Running a tool |
+| ✅ | Done |
+| ❌ | Error |
+| ⚠️ | Timed out |
+
+### Recovery
+
+If a response is cut off, use `!resume` to re-post the agent's last output.
+
+---
+
+## Architecture
 
 ```
 Discord User
-    │ 發訊息
+    │ message / slash command
     ▼
 Discord Bot (Go)
-    ├── ChannelManager          每個 channel 一個 Session + Queue
-    │     ├── Session           { agentName, sessionId, cwd }
-    │     └── JobQueue          chan Job（buffered，FIFO）
-    │           └── worker goroutine（每 channel 一個，依序執行）
-    │
-    └── AcpClient               HTTP client → acp-bridge daemon
-          └── SSE stream parser
-```
-
-```
-acp-bridge daemon (port 7800)
-    └── kiro-cli acp (per channel agent process)
-          └── AWS Bedrock / Anthropic
-```
-
----
-
-## 二、Channel Session 生命週期
-
-```
-第一次收到訊息（channel 無 session）
-  → POST /agents { type:"kiro", name:"ch-{channelId}", cwd }
-  → 儲存 { agentName, sessionId } 到 sessions.json
-
-後續訊息
-  → GET /agents/{agentName} 確認 alive
-  → 若 404 → 重新 start → session/load {sessionId}（kiro 支援）
-
-Bot 重啟
-  → 讀取 sessions.json
-  → 對每個 channel 重新 start agent + load session
-
-!reset 指令
-  → DELETE /agents/{agentName}
-  → 清空 queue
-  → 重新建立新 session
+    ├── per-channel SessionStore   { agentName, sessionId, cwd }
+    ├── per-channel JobQueue       buffered chan, FIFO
+    └── per-channel Worker         goroutine, sequential execution
+          │
+          ▼
+    AcpClient (HTTP)
+          │
+          ▼
+acp-bridge daemon :7800
+          │
+          ▼
+kiro-cli acp --trust-all-tools   (one process per channel)
+          │
+          ▼
+    AWS Bedrock / Anthropic
 ```
 
 ---
 
-## 三、Job 狀態機
-
-```
-[收到訊息]
-    │
-    ▼
- QUEUED  ──→ 原訊息加 ⏳ reaction
-    │
-    │ queue worker 取出
-    ▼
- RUNNING ──→ 原訊息 reaction 換成 🔄
-    │         bot 發一則「🔄 處理中...」回覆訊息
-    │         每 3 秒 edit 回覆訊息顯示串流內容
-    │
-    ├── 成功 → 原訊息 reaction 換成 ✅，edit 回覆為完整結果
-    ├── 失敗 → 原訊息 reaction 換成 ❌，edit 回覆為錯誤說明
-    └── 逾時 → 原訊息 reaction 換成 ⚠️，POST /agents/:name/cancel
-```
-
----
-
-## 四、Emoji 回壓對照
-
-| 狀態 | 原訊息 reaction | bot 回覆內容 |
-|------|----------------|-------------|
-| 排隊中 | ⏳ | — |
-| 執行中 | 🔄 | 「🔄 處理中...\n\n{目前串流}」（每 3 秒更新） |
-| 完成 | ✅ | 完整回覆（超過 2000 字自動分段） |
-| 失敗 | ❌ | 錯誤說明 |
-| 逾時 | ⚠️ | 「任務超時（{N}s），已取消」 |
-
-reaction 切換：先 remove 舊的，再 add 新的。
-
----
-
-## 五、特殊指令
-
-| 指令 | 行為 |
-|------|------|
-| `!reset` | 停止 agent、清空 queue、建新 session |
-| `!status` | 顯示 queue 長度、agent 狀態、session ID |
-| `!cancel` | 取消目前執行中任務（POST /agents/:name/cancel） |
-| `!cwd <path>` | 設定此 channel 的工作目錄（下次 reset 後生效） |
-
----
-
-## 六、持久化
-
-```
-/data/
-├── sessions.json    channel session 對應表（bot 重啟後恢復）
-└── config.json      各 channel 的 cwd 設定
-```
-
-### sessions.json 格式
-
-```json
-{
-  "1234567890": {
-    "agentName": "ch-1234567890",
-    "sessionId": "sess_abc123",
-    "cwd": "/projects/taipeidialysis-php"
-  }
-}
-```
-
----
-
-## 七、專案目錄結構
+## Project Structure
 
 ```
 kiro-discord-bot/
-├── main.go                 程式進入點
-├── config.go               設定讀取（env + config.json）
+├── main.go
+├── config.go
+├── start.sh              local start + watchdog script
 ├── bot/
-│   ├── bot.go              Discord bot 初始化、事件監聽
-│   ├── handler.go          訊息處理、指令路由
-│   └── reaction.go         reaction 管理（add/remove/swap）
+│   ├── bot.go            Discord init, Ready handler, slash command registration
+│   └── handler.go        message routing, slash command handlers
 ├── channel/
-│   ├── manager.go          ChannelManager：session + queue 管理
-│   ├── session.go          Session 結構、持久化
-│   └── worker.go           per-channel queue worker goroutine
+│   ├── manager.go        per-channel session + worker lifecycle
+│   ├── session.go        session struct + JSON persistence
+│   └── worker.go         job queue worker goroutine
 ├── acp/
-│   ├── client.go           acp-bridge HTTP client
-│   └── sse.go              SSE stream 解析
+│   ├── client.go         acp-bridge HTTP client + SSE stream parser
+│   └── sse.go
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .env.example
@@ -146,266 +217,64 @@ kiro-discord-bot/
 
 ---
 
-## 八、設定（環境變數）
+## Notes
 
-| 變數 | 說明 | 預設值 |
-|------|------|--------|
-| `DISCORD_TOKEN` | Discord bot token | 必填 |
-| `ACP_BRIDGE_URL` | acp-bridge daemon URL | `http://localhost:7800` |
-| `KIRO_CLI_PATH` | kiro-cli 完整路徑 | `kiro-cli` |
-| `DEFAULT_CWD` | 預設工作目錄 | `/projects` |
-| `ASK_TIMEOUT_SEC` | 任務逾時秒數 | `300` |
-| `QUEUE_BUFFER_SIZE` | 每 channel queue 最大長度 | `20` |
-| `DATA_DIR` | sessions.json 存放目錄 | `/data` |
-| `STREAM_UPDATE_SEC` | 串流更新間隔秒數 | `3` |
+- **Session persistence:** Sessions survive as long as the agent process is alive. Bot restart creates a new session (kiro-cli 1.28.1 does not support `session/load`).
+- **MCP servers:** Inherited from `~/.kiro/settings/mcp.json` automatically.
+- **Project steering:** Add `.kiro/steering/*.md` in the project directory to guide agent behavior.
+- **Long responses:** Automatically split into multiple messages with `(1/N)` labels.
 
 ---
 
-## 九、部署（Docker）
-
-```yaml
-# docker-compose.yml
-services:
-  acp-bridge:
-    image: node:20-alpine
-    working_dir: /app
-    command: sh -c "npm install -g acp-bridge && acp-bridged"
-    environment:
-      - ACP_BRIDGE_PORT=7800
-    ports:
-      - "7800:7800"
-    volumes:
-      - ~/.kiro:/root/.kiro          # kiro sessions 持久化
-      - ~/projects:/projects         # 工作目錄
-
-  discord-bot:
-    build: .
-    environment:
-      - DISCORD_TOKEN=${DISCORD_TOKEN}
-      - ACP_BRIDGE_URL=http://acp-bridge:7800
-      - KIRO_CLI_PATH=/usr/local/bin/kiro-cli
-      - DEFAULT_CWD=/projects
-    volumes:
-      - ./data:/data                 # sessions.json
-      - ~/.kiro:/root/.kiro          # kiro sessions
-      - ~/projects:/projects
-    depends_on:
-      - acp-bridge
-    restart: unless-stopped
-```
-
 ---
 
-## 十、關鍵實作細節
+## 部署說明（中文）
 
-### Queue Worker（per channel）
+### 前置需求
 
-```go
-// 每個 channel 啟動一個 goroutine
-func (w *Worker) run() {
-    for job := range w.queue {
-        w.execute(job)  // 同步執行，完成才取下一個
-    }
-}
-```
+- Go 1.21+
+- Node.js 20+（用於 acp-bridge）
+- 已安裝並登入 [kiro-cli](https://cli.kiro.dev/install)
+- Discord bot token，需具備：
+  - Scopes：`bot`、`applications.commands`
+  - 權限：查看頻道、發送訊息、新增反應、讀取訊息歷史
+  - Privileged Intents：啟用 **Message Content Intent**
 
-### SSE 串流解析
-
-```
-GET /agents/:name/ask?stream=true
-Content-Type: text/event-stream
-
-event: chunk
-data: {"chunk": "部分回覆..."}
-
-event: done
-data: {"response": "完整回覆", "stopReason": "end_turn"}
-
-event: error
-data: {"error": "...", "statusCode": 500}
-```
-
-用 `bufio.Scanner` 逐行讀，遇到 `event: done` 結束。
-
-### Discord 訊息長度限制
-
-Discord 單則訊息上限 2000 字。超過時自動分段發送，每段加上 `(1/N)` 標記。
-
-### Agent 重連邏輯
-
-```go
-func (m *Manager) ensureAgent(channelID string) error {
-    sess := m.sessions[channelID]
-    _, err := m.acp.GetAgent(sess.AgentName)
-    if err != nil {  // 404
-        return m.acp.StartAgent(sess.AgentName, sess.Cwd, sess.SessionID)
-        // StartAgent 內部：POST /agents，然後 session/load
-    }
-    return nil
-}
-```
-
----
-
-## 十一、實測紀錄（2026-03-21）
-
-### 環境
-- kiro-cli 1.28.1
-- acp-bridge 0.3.0（npm global）
-- acp-bridge daemon: `ACP_BRIDGE_PORT=7800 acp-bridged`
-
----
-
-### 測試 1：acp-bridge 基本 API ✅
+### 快速開始
 
 ```bash
-# 啟動 daemon
-ACP_BRIDGE_PORT=7800 acp-bridged > /tmp/acp-bridge.log 2>&1 &
-curl http://localhost:7800/health
-# → {"ok":true,"agents":0}
+# 1. 安裝 acp-bridge
+npm install -g acp-bridge
 
-# 啟動 kiro agent
-curl -X POST http://localhost:7800/agents \
-  -H "Content-Type: application/json" \
-  -d '{"type":"kiro","name":"ch-001","command":"/path/to/kiro-cli","args":["acp"],"cwd":"/projects"}'
-# → {"state":"idle","sessionId":"xxxx-...","protocolVersion":1,...}
+# 2. 安裝並登入 kiro-cli
+curl -fsSL https://cli.kiro.dev/install | bash
+kiro-cli login
 
-# ask（同步）
-curl -X POST http://localhost:7800/agents/ch-001/ask \
-  -d '{"prompt":"你好"}' --max-time 60
-# → {"state":"idle","stopReason":"end_turn","response":"..."}
+# 3. 設定環境變數
+cp .env.example .env
+# 編輯 .env，填入 DISCORD_TOKEN、DISCORD_GUILD_ID、KIRO_CLI_PATH 等
 
-# ask（SSE stream）
-curl -N -X POST "http://localhost:7800/agents/ch-001/ask?stream=true" \
-  -d '{"prompt":"列出3個數字"}' --max-time 60
-# → event: chunk\ndata: {"chunk":"1"}\n\n
-# → event: chunk\ndata: {"chunk":", 2, 3"}\n\n
-# → event: done\ndata: {"response":"1, 2, 3","stopReason":"end_turn"}\n\n
-
-# alive check
-curl http://localhost:7800/agents/ch-001
-# → {"state":"idle",...}  或  {"error":"not_found"}（404）
-
-# cancel
-curl -X POST http://localhost:7800/agents/ch-001/cancel
-# → {"ok":true,"cancelledPermissions":0}
-
-# stop
-curl -X DELETE http://localhost:7800/agents/ch-001
-# → {"ok":true}
+# 4. 啟動
+chmod +x start.sh && ./start.sh
 ```
 
-**重要：acp-bridge 的 `POST /agents` 不接受 `sessionId` 參數**，每次 start 都建新 session。
+### 指令說明
 
----
-
-### 測試 2：同一 session 內的對話記憶 ✅
-
-```bash
-# 第一輪
-curl -X POST http://localhost:7800/agents/ch-001/ask \
-  -d '{"prompt":"記住這個暗號：ALPHA-7749"}' --max-time 30
-# → "我無法記住跨對話的資訊..."（kiro 說明自身限制，但仍記錄在 session）
-
-# 第二輪（同一 agent process，同一 sessionId）
-curl -X POST http://localhost:7800/agents/ch-001/ask \
-  -d '{"prompt":"我剛才說的暗號是什麼？"}' --max-time 30
-# → "你剛才說的暗號是 ALPHA-7749。"  ✅ 有記憶
-```
-
-**結論：同一 agent process 存活期間，對話歷史完整接續。**
-
----
-
-### 測試 3：session/load 跨 process 恢復 ❌
-
-kiro 宣告 `agentCapabilities.loadSession: true`，但實測無法正常使用。
-
-#### 測試的 ACP JSON-RPC 序列
-
-```
-Client → kiro-cli acp (stdin/stdout JSON-RPC)
-
-1. initialize
-   → {"jsonrpc":"2.0","id":0,"method":"initialize","params":{
-       "protocolVersion":1,"clientCapabilities":{},"clientInfo":{"name":"test","version":"1.0"}
-     }}
-   ← {"result":{"protocolVersion":1,"agentCapabilities":{"loadSession":true,...},...},"id":0}
-
-2. session/new（必須先建立 session，kiro 才接受後續指令）
-   → {"jsonrpc":"2.0","id":1,"method":"session/new","params":{"cwd":"/projects","mcpServers":[]}}
-   ← [先收到多個 notifications]
-     {"method":"_kiro.dev/mcp/server_initialized","params":{"sessionId":"xxxx",...}}
-     {"method":"_kiro.dev/commands/available","params":{"sessionId":"xxxx","commands":[...]}}
-     {"method":"_kiro.dev/metadata","params":{"sessionId":"xxxx","contextUsagePercentage":5.8}}
-   ← [最後才收到 result，注意：result 在 notifications 之後]
-     {"result":{"sessionId":"xxxx","modes":{...},"models":{...}},"id":1}
-
-3. session/load（嘗試載入舊 session）
-   → {"jsonrpc":"2.0","id":2,"method":"session/load","params":{"sessionId":"<old-id>"}}
-   ← [無任何回應，kiro 完全忽略此 method]
-```
-
-#### 其他嘗試方式（均失敗）
-
-| 方式 | 結果 |
+| 指令 | 說明 |
 |------|------|
-| `session/load` 獨立 method | 無回應，kiro 忽略 |
-| `session/new` params 帶 `sessionId` | kiro 卡死，無回應 |
-| `_kiro.dev/commands/execute` 帶 `/chat <sessionId>` | 無回應，kiro 退出 |
+| `/start <目錄>` | 綁定專案目錄並啟動 agent |
+| `/reset` | 重啟此 channel 的 agent |
+| `/status` | 查詢 agent 狀態、queue 長度 |
+| `/cancel` | 取消目前執行中的任務 |
+| `/cwd` | 查詢目前工作目錄 |
+| `/pause` | 切換為 @mention 模式 |
+| `/back` | 恢復完整監聽模式 |
 
-#### session 檔案位置
+所有指令也支援 `!` 前綴（如 `!status`、`!reset`）。
 
-kiro 會將 session 持久化到磁碟：
-```
-~/.kiro/sessions/cli/<session-id>.json   # metadata（title、cwd、created_at）
-~/.kiro/sessions/cli/<session-id>.jsonl  # 對話歷史 event log
-~/.kiro/sessions/cli/<session-id>.lock   # 鎖定檔
-```
+### 注意事項
 
-檔案存在，但 `session/load` 無法正常觸發載入。
-
-**結論：kiro 1.28.1 的 session/load 無法跨 process 恢復對話歷史。**
-
----
-
-### 測試 4：ACP 訊息順序注意事項
-
-`session/new` 的 result 會在多個 notifications **之後**才到達，實作時必須用 id 匹配而非順序讀取：
-
-```
-收到順序：
-  1. {"method":"_kiro.dev/mcp/server_initialized", ...}   ← notification
-  2. {"method":"_kiro.dev/commands/available", ...}        ← notification（可能出現 2 次）
-  3. {"method":"_kiro.dev/metadata", ...}                  ← notification
-  4. {"result":{...}, "id":1}                              ← session/new 的 result（最後才到）
-```
-
-Go 實作時需要用 goroutine 讀取所有訊息，用 map[id]chan 分發 response，不能用同步 readline。
-
----
-
-### 設計決策更新
-
-基於以上測試，**session 持久化策略調整**：
-
-| 情境 | 行為 |
-|------|------|
-| agent process 存活 | 對話歷史完整接續 ✅ |
-| bot 重啟 / process 崩潰 | 建新 session，歷史不延續 |
-| `!reset` 指令 | 主動建新 session |
-
-**不實作 session/load**，因為 kiro 1.28.1 不支援。若未來 kiro 修復此功能，可再加入。
-
----
-
-## 十二、開發順序
-
-1. `acp/client.go` — HTTP client + SSE 解析
-2. `channel/session.go` — Session 結構 + JSON 持久化
-3. `channel/worker.go` — Queue worker goroutine
-4. `channel/manager.go` — ChannelManager 整合
-5. `bot/handler.go` — 訊息處理 + 指令路由
-6. `bot/bot.go` — Discord 初始化
-7. `main.go` — 組裝啟動
-8. `Dockerfile` + `docker-compose.yml`
+- Bot 需要在各 channel 的權限設定中明確授予讀寫權限
+- Session 在 agent process 存活期間持續，bot 重啟後建立新 session
+- MCP 設定自動繼承 `~/.kiro/settings/mcp.json`
+- 回應被截斷時可用 `!resume` 補完
