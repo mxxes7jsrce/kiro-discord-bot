@@ -12,6 +12,7 @@ type Bot struct {
 	discord *discordgo.Session
 	manager *channel.Manager
 	guildID string
+	dataDir string
 }
 
 func New(cfg interface{ GetBotConfig() BotConfig }) (*Bot, error) {
@@ -50,7 +51,7 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 		cfg.QueueBufferSize, cfg.AskTimeoutSec, cfg.StreamUpdateSec,
 	)
 
-	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID}
+	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID, dataDir: cfg.DataDir}
 	ds.AddHandler(b.handleMessage)
 	ds.AddHandler(b.handleInteraction)
 	ds.AddHandler(func(s *discordgo.Session, e *discordgo.InteractionCreate) {

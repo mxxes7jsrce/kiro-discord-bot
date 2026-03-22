@@ -1,12 +1,75 @@
 package bot
 
 import (
+	"fmt"
+	"io"
 	"log"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/nczz/kiro-discord-bot/channel"
 )
+
+// downloadAttachments saves message attachments to DATA_DIR/<agentName>/ and returns local paths.
+func (b *Bot) downloadAttachments(channelID string, attachments []*discordgo.MessageAttachment) []string {
+	if len(attachments) == 0 {
+		return nil
+	}
+	sess, ok := b.manager.GetSession(channelID)
+	agentDir := filepath.Join(b.dataDir, "ch-"+channelID)
+	if ok && sess.AgentName != "" {
+		agentDir = filepath.Join(b.dataDir, sess.AgentName)
+	}
+	_ = os.MkdirAll(agentDir, 0755)
+
+	var paths []string
+	for _, att := range attachments {
+		resp, err := http.Get(att.URL)
+		if err != nil {
+			log.Printf("[attach] download %s: %v", att.Filename, err)
+			continue
+		}
+		dst := filepath.Join(agentDir, att.Filename)
+		f, err := os.Create(dst)
+		if err != nil {
+			resp.Body.Close()
+			log.Printf("[attach] create %s: %v", dst, err)
+			continue
+		}
+		_, err = io.Copy(f, resp.Body)
+		resp.Body.Close()
+		f.Close()
+		if err != nil {
+			log.Printf("[attach] write %s: %v", dst, err)
+			continue
+		}
+		abs, _ := filepath.Abs(dst)
+		paths = append(paths, abs)
+	}
+	return paths
+}
+
+// buildPrompt combines user text with attachment paths into an effective prompt.
+func buildPrompt(text string, attachments []string) string {
+	if len(attachments) == 0 {
+		return text
+	}
+	var sb strings.Builder
+	sb.WriteString("[Attached files]\n")
+	for _, p := range attachments {
+		sb.WriteString(fmt.Sprintf("- %s\n", p))
+	}
+	sb.WriteString("\n")
+	if text != "" {
+		sb.WriteString(text)
+	} else {
+		sb.WriteString("Please review the attached file(s).")
+	}
+	return sb.String()
+}
 
 func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 	// Ignore bot's own messages
@@ -15,7 +78,8 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	content := strings.TrimSpace(m.Content)
-	if content == "" {
+	hasAttachments := len(m.Attachments) > 0
+	if content == "" && !hasAttachments {
 		return
 	}
 
@@ -90,11 +154,14 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 		ds.ChannelMessageSend(m.ChannelID, "✅ Agent started at `"+cwd+"`")
 
 	default:
-		// Regular prompt → enqueue
+		// Download attachments if any
+		localPaths := b.downloadAttachments(m.ChannelID, m.Attachments)
+		prompt := buildPrompt(content, localPaths)
+
 		job := &channel.Job{
 			ChannelID: m.ChannelID,
 			MessageID: m.ID,
-			Prompt:    content,
+			Prompt:    prompt,
 		}
 		if err := b.manager.Enqueue(ds, job); err != nil {
 			ds.ChannelMessageSend(m.ChannelID, "❌ "+err.Error())
