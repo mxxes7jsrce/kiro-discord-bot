@@ -13,6 +13,20 @@ import (
 	"github.com/nczz/kiro-discord-bot/channel"
 )
 
+const usageMessage = `🤖 **Agent 已就緒！** 以下是可用指令：
+
+` + "```" + `
+!status   — 查詢 agent 狀態
+!cancel   — 取消目前執行中的任務
+!cwd      — 查詢目前工作目錄
+!reset    — 重啟 agent session
+!start <目錄> — 綁定新的專案目錄
+!pause    — 切換為 @mention 模式（僅回應 @提及）
+!back     — 恢復完整監聽模式
+!resume   — 重新顯示上次被截斷的回應
+` + "```" + `
+直接在頻道輸入訊息即可與 agent 對話。`
+
 // downloadAttachments saves message attachments to DATA_DIR/<agentName>/ and returns local paths.
 func (b *Bot) downloadAttachments(channelID string, attachments []*discordgo.MessageAttachment) []string {
 	if len(attachments) == 0 {
@@ -126,6 +140,7 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		ds.ChannelMessageSend(m.ChannelID, "✅ Session reset. Next message starts a new agent.")
+		ds.ChannelMessageSend(m.ChannelID, usageMessage)
 
 	case content == "!status":
 		ds.ChannelMessageSend(m.ChannelID, b.manager.Status(m.ChannelID))
@@ -152,6 +167,7 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		ds.ChannelMessageSend(m.ChannelID, "✅ Agent started at `"+cwd+"`")
+		ds.ChannelMessageSend(m.ChannelID, usageMessage)
 
 	default:
 		// Download attachments if any
@@ -224,6 +240,7 @@ func (b *Bot) handleInteraction(ds *discordgo.Session, i *discordgo.InteractionC
 				followup("❌ " + err.Error())
 			} else {
 				followup("✅ Agent started at `" + cwd + "`")
+				followup(usageMessage)
 			}
 		}()
 	case "reset":
@@ -233,6 +250,7 @@ func (b *Bot) handleInteraction(ds *discordgo.Session, i *discordgo.InteractionC
 				followup("❌ " + err.Error())
 			} else {
 				followup("✅ Session reset.")
+				followup(usageMessage)
 			}
 		}()
 	case "status":
