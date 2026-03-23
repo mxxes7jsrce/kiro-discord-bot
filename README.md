@@ -209,11 +209,78 @@ kiro-discord-bot/
 ├── acp/
 │   ├── client.go         acp-bridge HTTP client + SSE stream parser
 │   └── sse.go
+├── cmd/
+│   └── mcp-discord/
+│       └── main.go       Discord MCP server (optional)
+├── .kiro/
+│   └── steering/
+│       └── discord-mcp.md  agent steering (install to ~/.kiro/steering/)
+├── INSTALL_MCP.md          MCP server install guide (for agent)
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .env.example
 └── README.md
 ```
+
+---
+
+## Optional: Discord MCP Server
+
+This project includes a built-in Discord MCP Server (`cmd/mcp-discord/`) that gives the kiro agent direct access to Discord — read messages, send messages, list channels, search, add reactions, etc.
+
+Once enabled, the agent can proactively interact with Discord instead of only responding to forwarded messages.
+
+### Quick Install
+
+```bash
+# 1. Build the MCP server binary
+go build -o mcp-discord-server ./cmd/mcp-discord/
+
+# 2. Install the steering file (global, so it works in any project directory)
+mkdir -p ~/.kiro/steering
+cp .kiro/steering/discord-mcp.md ~/.kiro/steering/discord-mcp.md
+
+# 3. Register in kiro MCP settings
+# Add the following to ~/.kiro/settings/mcp.json under "mcpServers":
+```
+
+```json
+"mcp-discord": {
+  "command": "sh",
+  "args": [
+    "-c",
+    "set -a && . /absolute/path/to/kiro-discord-bot/.env && exec /absolute/path/to/kiro-discord-bot/mcp-discord-server"
+  ]
+}
+```
+
+Replace `/absolute/path/to/kiro-discord-bot` with the actual project directory.
+
+```bash
+# 4. Restart the agent session
+# Use /reset or !reset in Discord
+```
+
+### Auto-Install via Agent
+
+You can also ask the agent to install it by sending this message in Discord:
+
+> Read INSTALL_MCP.md and follow the steps to install the Discord MCP server.
+
+The agent will read the guide, build the binary, update `mcp.json`, and prompt you to restart.
+
+### Available Tools (after enabled)
+
+| Tool | Description |
+|------|-------------|
+| `discord_list_channels` | List text channels in a guild |
+| `discord_read_messages` | Read recent messages from a channel |
+| `discord_send_message` | Send a message to a channel |
+| `discord_reply_message` | Reply to a specific message |
+| `discord_add_reaction` | Add a reaction emoji to a message |
+| `discord_list_members` | List members of a guild |
+| `discord_search_messages` | Search recent messages by keyword |
+| `discord_channel_info` | Get detailed info about a channel |
 
 ---
 
@@ -278,3 +345,61 @@ chmod +x start.sh && ./start.sh
 - Session 在 agent process 存活期間持續，bot 重啟後建立新 session
 - MCP 設定自動繼承 `~/.kiro/settings/mcp.json`
 - 回應被截斷時可用 `!resume` 補完
+
+---
+
+### 選配：Discord MCP Server
+
+本專案內建 Discord MCP Server（`cmd/mcp-discord/`），啟用後 kiro agent 可直接操作 Discord——讀訊息、發訊息、列頻道、搜尋、加反應等。
+
+#### 手動安裝
+
+```bash
+# 1. 編譯 MCP server
+go build -o mcp-discord-server ./cmd/mcp-discord/
+
+# 2. 安裝 steering 文件（全域，讓任何專案目錄都能使用）
+mkdir -p ~/.kiro/steering
+cp .kiro/steering/discord-mcp.md ~/.kiro/steering/discord-mcp.md
+
+# 3. 註冊到 kiro MCP 設定
+# 在 ~/.kiro/settings/mcp.json 的 "mcpServers" 中加入：
+```
+
+```json
+"mcp-discord": {
+  "command": "sh",
+  "args": [
+    "-c",
+    "set -a && . /你的專案絕對路徑/.env && exec /你的專案絕對路徑/mcp-discord-server"
+  ]
+}
+```
+
+將 `/你的專案絕對路徑` 替換為實際路徑。
+
+```bash
+# 4. 重啟 agent session
+# 在 Discord 中使用 /reset 或 !reset
+```
+
+#### 透過 Agent 自動安裝
+
+也可以直接在 Discord 中對 bot 說：
+
+> 讀取 INSTALL_MCP.md 並照步驟安裝 Discord MCP server。
+
+Agent 會自動讀取說明、編譯、更新 mcp.json，並提示你重啟。
+
+#### 啟用後可用的 Tools
+
+| Tool | 說明 |
+|------|------|
+| `discord_list_channels` | 列出伺服器的文字頻道 |
+| `discord_read_messages` | 讀取頻道最近的訊息 |
+| `discord_send_message` | 發送訊息到指定頻道 |
+| `discord_reply_message` | 回覆特定訊息 |
+| `discord_add_reaction` | 對訊息加 emoji 反應 |
+| `discord_list_members` | 列出伺服器成員 |
+| `discord_search_messages` | 在頻道中搜尋關鍵字 |
+| `discord_channel_info` | 取得頻道詳細資訊 |

@@ -53,19 +53,19 @@ func (b *Bot) downloadAttachments(channelID string, attachments []*discordgo.Mes
 }
 
 // buildPrompt combines user text with attachment paths into an effective prompt.
-func buildPrompt(text string, attachments []string) string {
-	if len(attachments) == 0 {
-		return text
-	}
+func buildPrompt(text string, attachments []string, channelID, guildID string) string {
 	var sb strings.Builder
-	sb.WriteString("[Attached files]\n")
-	for _, p := range attachments {
-		sb.WriteString(fmt.Sprintf("- %s\n", p))
+	sb.WriteString(fmt.Sprintf("[Discord context] channel_id=%s guild_id=%s\n\n", channelID, guildID))
+	if len(attachments) > 0 {
+		sb.WriteString("[Attached files]\n")
+		for _, p := range attachments {
+			sb.WriteString(fmt.Sprintf("- %s\n", p))
+		}
+		sb.WriteString("\n")
 	}
-	sb.WriteString("\n")
 	if text != "" {
 		sb.WriteString(text)
-	} else {
+	} else if len(attachments) > 0 {
 		sb.WriteString("Please review the attached file(s).")
 	}
 	return sb.String()
@@ -156,7 +156,7 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 	default:
 		// Download attachments if any
 		localPaths := b.downloadAttachments(m.ChannelID, m.Attachments)
-		prompt := buildPrompt(content, localPaths)
+		prompt := buildPrompt(content, localPaths, m.ChannelID, m.GuildID)
 
 		job := &channel.Job{
 			ChannelID: m.ChannelID,
