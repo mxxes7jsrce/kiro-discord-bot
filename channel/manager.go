@@ -87,7 +87,7 @@ func (m *Manager) Status(channelID string) string {
 	defer m.mu.Unlock()
 
 	sess, ok := m.store.Get(channelID)
-	if !ok {
+	if !ok || sess.AgentName == "" {
 		return "No active session."
 	}
 
@@ -102,8 +102,13 @@ func (m *Manager) Status(channelID string) string {
 		qLen = w.QueueLen()
 	}
 
+	sid := sess.SessionID
+	if len(sid) > 8 {
+		sid = sid[:8]
+	}
+
 	return fmt.Sprintf("Agent: `%s` | State: `%s` | Queue: %d | Session: `%s`",
-		sess.AgentName, state, qLen, sess.SessionID[:8])
+		sess.AgentName, state, qLen, sid)
 }
 
 // Cancel cancels the current running job for a channel.
