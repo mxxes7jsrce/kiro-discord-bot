@@ -29,7 +29,7 @@ type CronJob struct {
 	CreatedAt     string `json:"created_at"`
 	LastRun       string `json:"last_run,omitempty"`
 	NextRun       string `json:"next_run,omitempty"`
-	Running       bool   `json:"-"` // transient, not persisted
+	Running       int32  `json:"-"` // atomic: 1=running, 0=idle
 }
 
 // CronStore persists cron jobs to a JSON file.

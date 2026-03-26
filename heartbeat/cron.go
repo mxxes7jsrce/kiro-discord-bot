@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -63,13 +64,13 @@ func (c *CronTask) ShouldRun(_ time.Time) bool {
 func (c *CronTask) Run() error {
 	now := time.Now().In(c.location)
 	for _, job := range c.store.All() {
-		if !job.Enabled || job.Running {
+		if !job.Enabled || atomic.LoadInt32(&job.Running) == 1 {
 			continue
 		}
 		if !c.isDue(job, now) {
 			continue
 		}
-		job.Running = true
+		atomic.StoreInt32(&job.Running, 1)
 		go c.execute(job, now)
 	}
 	return nil
@@ -110,7 +111,7 @@ func (c *CronTask) computeNext(schedule string, afterStr string) (time.Time, err
 }
 
 func (c *CronTask) execute(job *CronJob, now time.Time) {
-	defer func() { job.Running = false }()
+	defer atomic.StoreInt32(&job.Running, 0)
 
 	agentName := "cron-" + job.ID
 	start := time.Now()
