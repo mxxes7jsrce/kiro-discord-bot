@@ -263,87 +263,81 @@ func (b *Bot) handleInteraction(ds *discordgo.Session, i *discordgo.InteractionC
 	log.Printf("[interaction] /%s from %s", data.Name, i.ChannelID)
 	channelID := i.ChannelID
 
-	respond := func(msg string) {
-		_ = ds.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{Content: msg},
-		})
-	}
-	followup := func(msg string) {
+	// Acknowledge immediately to avoid 3-second timeout
+	_ = ds.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+	})
+	reply := func(msg string) {
 		_, _ = ds.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{Content: msg})
 	}
 
-	switch data.Name {
-	case "start":
-		cwd := data.Options[0].StringValue()
-		respond("⏳ Starting agent at `" + cwd + "`...")
-		go func() {
+	go func() {
+		switch data.Name {
+		case "start":
+			cwd := data.Options[0].StringValue()
+			reply("⏳ Starting agent at `" + cwd + "`...")
 			if err := b.manager.StartAt(channelID, cwd); err != nil {
-				followup("❌ " + err.Error())
+				reply("❌ " + err.Error())
 			} else {
-				followup("✅ Agent started at `" + cwd + "`")
-				followup(usageMessage)
+				reply("✅ Agent started at `" + cwd + "`")
+				reply(usageMessage)
 			}
-		}()
-	case "reset":
-		respond("⏳ Resetting...")
-		go func() {
+		case "reset":
+			reply("⏳ Resetting...")
 			if err := b.manager.Reset(channelID); err != nil {
-				followup("❌ " + err.Error())
+				reply("❌ " + err.Error())
 			} else {
-				followup("✅ Session reset.")
-				followup(usageMessage)
+				reply("✅ Session reset.")
+				reply(usageMessage)
 			}
-		}()
-	case "status":
-		respond(b.manager.Status(channelID))
-	case "cancel":
-		if err := b.manager.Cancel(channelID); err != nil {
-			respond("❌ " + err.Error())
-		} else {
-			respond("⚠️ Cancel requested.")
-		}
-	case "cwd":
-		if len(data.Options) > 0 {
-			newCwd := data.Options[0].StringValue()
-			if err := b.manager.SetCWD(channelID, newCwd); err != nil {
-				respond("❌ " + err.Error())
+		case "status":
+			reply(b.manager.Status(channelID))
+		case "cancel":
+			if err := b.manager.Cancel(channelID); err != nil {
+				reply("❌ " + err.Error())
 			} else {
-				respond("✅ CWD 已設定為 `" + newCwd + "`，下次 `/reset` 時生效。")
+				reply("⚠️ Cancel requested.")
 			}
-		} else {
-			respond(b.manager.CWD(channelID))
-		}
-	case "pause":
-		b.manager.Pause(channelID)
-		respond("⏸️ 暫停監聽，改為 @mention 模式")
-	case "back":
-		b.manager.Back(channelID)
-		respond("▶️ 恢復完整監聽")
-	case "model":
-		if len(data.Options) > 0 {
-			model := data.Options[0].StringValue()
-			if err := b.manager.SetModel(channelID, model); err != nil {
-				respond("❌ " + err.Error())
-				return
-			}
-			respond("⏳ Model 設定為 `" + model + "`，正在重啟 agent...")
-			go func() {
-				if err := b.manager.Reset(channelID); err != nil {
-					followup("❌ Reset failed: " + err.Error())
+		case "cwd":
+			if len(data.Options) > 0 {
+				newCwd := data.Options[0].StringValue()
+				if err := b.manager.SetCWD(channelID, newCwd); err != nil {
+					reply("❌ " + err.Error())
 				} else {
-					followup("✅ Agent 已使用 model `" + model + "` 重啟。")
+					reply("✅ CWD 已設定為 `" + newCwd + "`，下次 `/reset` 時生效。")
 				}
-			}()
-		} else {
-			respond(b.manager.Model(channelID))
+			} else {
+				reply(b.manager.CWD(channelID))
+			}
+		case "pause":
+			b.manager.Pause(channelID)
+			reply("⏸️ 暫停監聽，改為 @mention 模式")
+		case "back":
+			b.manager.Back(channelID)
+			reply("▶️ 恢復完整監聽")
+		case "model":
+			if len(data.Options) > 0 {
+				model := data.Options[0].StringValue()
+				if err := b.manager.SetModel(channelID, model); err != nil {
+					reply("❌ " + err.Error())
+					return
+				}
+				reply("⏳ Model 設定為 `" + model + "`，正在重啟 agent...")
+				if err := b.manager.Reset(channelID); err != nil {
+					reply("❌ Reset failed: " + err.Error())
+				} else {
+					reply("✅ Agent 已使用 model `" + model + "` 重啟。")
+				}
+			} else {
+				reply(b.manager.Model(channelID))
+			}
+		case "models":
+			msg, err := b.manager.ListModels()
+			if err != nil {
+				reply("❌ " + err.Error())
+			} else {
+				reply(msg)
+			}
 		}
-	case "models":
-		msg, err := b.manager.ListModels()
-		if err != nil {
-			respond("❌ " + err.Error())
-		} else {
-			respond(msg)
-		}
-	}
+	}()
 }
