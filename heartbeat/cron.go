@@ -116,6 +116,17 @@ func (c *CronTask) computeNext(schedule string, afterStr string) (time.Time, err
 func (c *CronTask) execute(job *CronJob, now time.Time) {
 	defer atomic.StoreInt32(&job.Running, 0)
 
+	// Simple notify mode (no agent)
+	if job.OneShot && !job.UseAgent {
+		mention := ""
+		if job.MentionID != "" {
+			mention = fmt.Sprintf("<@%s> ", job.MentionID)
+		}
+		c.deps.Notify(job.ChannelID, fmt.Sprintf("🔔 %s%s", mention, job.Prompt))
+		c.finishJob(job, now)
+		return
+	}
+
 	agentName := "cron-" + job.ID
 	start := time.Now()
 
@@ -187,12 +198,7 @@ func (c *CronTask) buildPrompt(job *CronJob, history []CronHistory) string {
 	sb.WriteString(fmt.Sprintf("[Discord context] channel_id=%s guild_id=%s\n\n", job.ChannelID, job.GuildID))
 
 	if job.OneShot {
-		sb.WriteString("[預約提醒]\n")
-		if job.MentionID != "" {
-			sb.WriteString(fmt.Sprintf("請在回覆中 tag <@%s> 並提醒：", job.MentionID))
-		} else {
-			sb.WriteString("請提醒：")
-		}
+		sb.WriteString("[預約任務]\n")
 		sb.WriteString(job.Prompt)
 		return sb.String()
 	}

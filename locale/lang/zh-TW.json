@@ -80,5 +80,6 @@
   "cron.label.cron": "排程任務",
   "cron.label.reminder": "預約提醒",
   "remind.created": "🔔 已預約提醒\n時間：%s\n內容：%s",
-  "remind.usage": "Usage: `!remind <時間> <內容>`\n例：`!remind 下午五點 提醒我要開會`"
+  "remind.usage": "Usage: `!remind <時間> <內容>`\n例：`!remind 下午五點 提醒我要開會`",
+  "cmd.remind.opt.agent": "讓 agent 執行任務（預設：僅通知）"
 }

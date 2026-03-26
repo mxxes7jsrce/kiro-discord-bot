@@ -87,5 +87,6 @@
   "remind.created": "🔔 Reminder set\nTime: %s\nContent: %s",
   "remind.usage": "Usage: `!remind <time> <content>`\ne.g. `!remind 5pm remind me about the meeting`",
   "models.header": "**Available Models:**\n",
-  "models.footer": "\nUsage: `/model <model-id>` or `!model <model-id>`"
+  "models.footer": "\nUsage: `/model <model-id>` or `!model <model-id>`",
+  "cmd.remind.opt.agent": "Let agent execute the task (default: just notify)"
 }

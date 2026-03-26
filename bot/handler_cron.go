@@ -324,7 +324,7 @@ func (b *Bot) handleCronTextCommand(ds *discordgo.Session, channelID, guildID, u
 }
 
 // handleRemind handles /remind slash command.
-func (b *Bot) handleRemind(ds *discordgo.Session, i *discordgo.InteractionCreate, timeStr, content string) {
+func (b *Bot) handleRemind(ds *discordgo.Session, i *discordgo.InteractionCreate, timeStr, content string, useAgent bool) {
 	loc := time.Now().Location()
 	if b.cronTimezone != "" {
 		if l, err := time.LoadLocation(b.cronTimezone); err == nil {
@@ -352,6 +352,7 @@ func (b *Bot) handleRemind(ds *discordgo.Session, i *discordgo.InteractionCreate
 		GuildID:       guildID,
 		Prompt:        content,
 		OneShot:       true,
+		UseAgent:      useAgent,
 		MentionID:     userID,
 		Enabled:       true,
 		CreatedBy:     username,
@@ -371,6 +372,13 @@ func (b *Bot) handleRemind(ds *discordgo.Session, i *discordgo.InteractionCreate
 // handleRemindText handles !remind text command.
 func (b *Bot) handleRemindText(ds *discordgo.Session, channelID, guildID, userID, username, content string) {
 	// Parse: !remind <time> <content>
+	// Check for --agent flag
+	useAgent := false
+	if strings.HasPrefix(content, "--agent ") {
+		useAgent = true
+		content = strings.TrimPrefix(content, "--agent ")
+	}
+
 	// Find first space after time portion
 	parts := strings.SplitN(content, " ", 2)
 	if len(parts) < 2 {
@@ -411,6 +419,7 @@ func (b *Bot) handleRemindText(ds *discordgo.Session, channelID, guildID, userID
 		GuildID:       guildID,
 		Prompt:        prompt,
 		OneShot:       true,
+		UseAgent:      useAgent,
 		MentionID:     userID,
 		Enabled:       true,
 		CreatedBy:     username,

@@ -238,6 +238,7 @@ var slashCommands = []*discordgo.ApplicationCommand{
 	{Name: "remind", Description: L.Get("cmd.remind.desc"), Options: []*discordgo.ApplicationCommandOption{
 		{Type: discordgo.ApplicationCommandOptionString, Name: "time", Description: L.Get("cmd.remind.opt.time"), Required: true},
 		{Type: discordgo.ApplicationCommandOptionString, Name: "content", Description: L.Get("cmd.remind.opt.content"), Required: true},
+		{Type: discordgo.ApplicationCommandOptionBoolean, Name: "agent", Description: L.Get("cmd.remind.opt.agent"), Required: false},
 	}},
 }
 
@@ -293,7 +294,11 @@ func (b *Bot) handleSlashCommand(ds *discordgo.Session, i *discordgo.Interaction
 	case "remind":
 		timeStr := data.Options[0].StringValue()
 		content := data.Options[1].StringValue()
-		b.handleRemind(ds, i, timeStr, content)
+		useAgent := false
+		if len(data.Options) > 2 {
+			useAgent = data.Options[2].BoolValue()
+		}
+		b.handleRemind(ds, i, timeStr, content, useAgent)
 		return
 	}
 

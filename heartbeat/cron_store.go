@@ -29,6 +29,7 @@ type CronJob struct {
 	CreatedAt     string `json:"created_at"`
 	LastRun       string `json:"last_run,omitempty"`
 	NextRun       string `json:"next_run,omitempty"`
+	UseAgent      bool   `json:"use_agent,omitempty"`
 	Running       int32  `json:"-"` // atomic: 1=running, 0=idle
 }
 
