@@ -7,7 +7,7 @@ Turn any Discord channel into an AI-powered workspace. This bot connects Discord
 - 🔧 Let agents read/write code, run commands, and manage infrastructure in your project directories
 - 🔄 Switch between models on the fly — per channel, no restart needed
 - ⏰ Schedule recurring tasks with cron — agents check servers, run tests, generate reports on autopilot
-- 🔔 Set one-time reminders — natural language like "下午五點提醒我開會" just works
+- 🔔 Set one-time reminders — natural language like "in 30 minutes" or "tomorrow 9am" just works
 - 🩺 Auto-healing — dead agents are detected and restarted automatically
 - 📝 Full conversation logs — every interaction is recorded in JSONL for audit and analysis
 
