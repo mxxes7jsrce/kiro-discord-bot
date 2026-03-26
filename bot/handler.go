@@ -203,6 +203,9 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		ds.ChannelMessageSend(m.ChannelID, "✅ Agent 已使用 model `"+model+"` 重啟。")
 
+	case strings.HasPrefix(content, "!cron"):
+		b.handleCronTextCommand(ds, m.ChannelID, content)
+
 	default:
 		// Download attachments if any
 		localPaths := b.downloadAttachments(m.ChannelID, m.Attachments)
@@ -238,6 +241,11 @@ var slashCommands = []*discordgo.ApplicationCommand{
 		{Type: discordgo.ApplicationCommandOptionString, Name: "model", Description: "Model ID（留空則查詢）", Required: false},
 	}},
 	{Name: "models", Description: "列出所有可用的 model"},
+	{Name: "cron", Description: "新增排程任務"},
+	{Name: "cron-list", Description: "列出排程任務"},
+	{Name: "cron-run", Description: "手動執行排程任務", Options: []*discordgo.ApplicationCommandOption{
+		{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: "任務名稱", Required: true},
+	}},
 }
 
 func (b *Bot) registerSlashCommands() {
@@ -257,14 +265,41 @@ func (b *Bot) registerSlashCommands() {
 }
 
 func (b *Bot) handleInteraction(ds *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Type != discordgo.InteractionApplicationCommand {
-		return
+	switch i.Type {
+	case discordgo.InteractionApplicationCommand:
+		b.handleSlashCommand(ds, i)
+	case discordgo.InteractionModalSubmit:
+		if i.ModalSubmitData().CustomID == "cron_add_modal" {
+			b.handleCronModalSubmit(ds, i)
+		}
+	case discordgo.InteractionMessageComponent:
+		customID := i.MessageComponentData().CustomID
+		if strings.HasPrefix(customID, "cron_") {
+			b.handleCronButton(ds, i)
+		}
 	}
+}
+
+func (b *Bot) handleSlashCommand(ds *discordgo.Session, i *discordgo.InteractionCreate) {
 	data := i.ApplicationCommandData()
 	log.Printf("[interaction] /%s from %s", data.Name, i.ChannelID)
 	channelID := i.ChannelID
 
-	// Acknowledge immediately to avoid 3-second timeout
+	// Commands that need their own response type (not deferred)
+	switch data.Name {
+	case "cron":
+		b.handleCronModal(ds, i)
+		return
+	case "cron-list":
+		b.handleCronList(ds, i)
+		return
+	case "cron-run":
+		name := data.Options[0].StringValue()
+		b.handleCronRun(ds, i, name)
+		return
+	}
+
+	// All other commands: acknowledge immediately to avoid 3-second timeout
 	_ = ds.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 	})

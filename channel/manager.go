@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -356,6 +357,31 @@ func (m *Manager) ActiveSessions() []struct{ ChannelID, AgentName string } {
 func (m *Manager) CheckAgent(agentName string) error {
 	_, err := m.acpClient.GetAgent(agentName)
 	return err
+}
+
+// StartTempAgent starts a temporary agent (for cron jobs).
+func (m *Manager) StartTempAgent(name, cwd string) (*acp.AgentStatus, error) {
+	return m.acpClient.StartAgent(name, m.kiroCLI, cwd, "")
+}
+
+// StopTempAgent stops a temporary agent.
+func (m *Manager) StopTempAgent(name string) {
+	_ = m.acpClient.CancelAgent(name)
+	_ = m.acpClient.StopAgent(name)
+}
+
+// WaitAgentIdle waits for an agent to become idle.
+func (m *Manager) WaitAgentIdle(name string, timeout time.Duration) error {
+	return m.acpClient.WaitUntilIdle(name, timeout)
+}
+
+// AskAgent sends a prompt to a named agent and returns the response.
+func (m *Manager) AskAgent(ctx context.Context, name, prompt string) (string, error) {
+	result, err := m.acpClient.Ask(ctx, name, prompt)
+	if err != nil {
+		return "", err
+	}
+	return result.Response, nil
 }
 
 // Pause sets the channel to mention-only mode.

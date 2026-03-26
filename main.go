@@ -25,6 +25,7 @@ func main() {
 		KiroModel:       cfg.KiroModel,
 		HeartbeatSec:    cfg.HeartbeatSec,
 		AttRetainDays:   cfg.AttRetainDays,
+		CronTimezone:    cfg.CronTimezone,
 	})
 	if err != nil {
 		log.Fatal(err)

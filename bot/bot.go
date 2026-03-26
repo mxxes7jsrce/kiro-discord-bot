@@ -18,6 +18,7 @@ type Bot struct {
 	hb            *heartbeat.Heartbeat
 	hbCancel      context.CancelFunc
 	acpBridgeURL  string
+	cronStore     *heartbeat.CronStore
 }
 
 func New(cfg interface{ GetBotConfig() BotConfig }) (*Bot, error) {
@@ -37,6 +38,7 @@ type BotConfig struct {
 	KiroModel       string
 	HeartbeatSec    int
 	AttRetainDays   int
+	CronTimezone    string
 }
 
 func NewFromConfig(cfg BotConfig) (*Bot, error) {
@@ -62,9 +64,16 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 
 	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID, dataDir: cfg.DataDir, acpBridgeURL: cfg.AcpBridgeURL}
 
+	cronStore, err := heartbeat.NewCronStore(cfg.DataDir)
+	if err != nil {
+		return nil, err
+	}
+	b.cronStore = cronStore
+
 	hb := heartbeat.New(cfg.HeartbeatSec)
 	hb.Register(heartbeat.NewHealthTask(&healthAdapter{bot: b}, cfg.AcpBridgeURL))
 	hb.Register(heartbeat.NewCleanupTask(cfg.DataDir, cfg.AttRetainDays))
+	hb.Register(heartbeat.NewCronTask(cronStore, &cronAdapter{bot: b}, cfg.DataDir, cfg.CronTimezone))
 	b.hb = hb
 	ds.AddHandler(b.handleMessage)
 	ds.AddHandler(b.handleInteraction)

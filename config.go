@@ -18,6 +18,7 @@ type Config struct {
 	KiroModel       string
 	HeartbeatSec    int
 	AttRetainDays   int
+	CronTimezone    string
 }
 
 func loadConfig() *Config {
@@ -34,6 +35,7 @@ func loadConfig() *Config {
 		KiroModel:       envOr("KIRO_MODEL", ""),
 		HeartbeatSec:    envInt("HEARTBEAT_SEC", 60),
 		AttRetainDays:   envInt("ATTACHMENT_RETAIN_DAYS", 7),
+		CronTimezone:    envOr("CRON_TIMEZONE", ""),
 	}
 }
 
