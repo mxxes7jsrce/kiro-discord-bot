@@ -1,6 +1,15 @@
 # kiro-discord-bot
 
-A Discord bot that bridges Discord channels to [kiro-cli](https://kiro.dev) AI agents via [acp-bridge](https://www.npmjs.com/package/acp-bridge). Each channel gets its own agent session and job queue.
+Turn any Discord channel into an AI-powered workspace. This bot connects Discord to [kiro-cli](https://kiro.dev) AI agents via [acp-bridge](https://www.npmjs.com/package/acp-bridge), giving your team on-demand access to coding assistants, DevOps automation, scheduled tasks, and more — all from the chat interface you already use.
+
+**What you can do:**
+- 💬 Chat with AI agents per channel — each channel gets its own isolated session and project context
+- 🔧 Let agents read/write code, run commands, and manage infrastructure in your project directories
+- 🔄 Switch between models on the fly — per channel, no restart needed
+- ⏰ Schedule recurring tasks with cron — agents check servers, run tests, generate reports on autopilot
+- 🔔 Set one-time reminders — natural language like "下午五點提醒我開會" just works
+- 🩺 Auto-healing — dead agents are detected and restarted automatically
+- 📝 Full conversation logs — every interaction is recorded in JSONL for audit and analysis
 
 **Created:** 2026-03-21 | **Language:** Go
 
@@ -73,6 +82,10 @@ DEFAULT_CWD=/projects
 DATA_DIR=/tmp/kiro-bot-data
 ASK_TIMEOUT_SEC=300
 STREAM_UPDATE_SEC=3
+KIRO_MODEL=
+HEARTBEAT_SEC=60
+ATTACHMENT_RETAIN_DAYS=7
+CRON_TIMEZONE=Asia/Taipei
 ```
 
 | Variable | Description | Default |
@@ -82,11 +95,13 @@ STREAM_UPDATE_SEC=3
 | `ACP_BRIDGE_URL` | acp-bridge daemon URL | `http://localhost:7800` |
 | `KIRO_CLI_PATH` | Full path to kiro-cli binary | `kiro-cli` |
 | `DEFAULT_CWD` | Default working directory for agents | `/projects` |
-| `DATA_DIR` | Directory for sessions.json | `./data` |
+| `DATA_DIR` | Directory for sessions, logs, and attachments | `./data` |
 | `ASK_TIMEOUT_SEC` | Agent response timeout in seconds | `300` |
 | `STREAM_UPDATE_SEC` | Discord message update interval during streaming | `3` |
 | `KIRO_MODEL` | Default model ID for kiro-cli (empty = kiro default) | `` |
 | `HEARTBEAT_SEC` | Agent health check interval in seconds | `60` |
+| `ATTACHMENT_RETAIN_DAYS` | Auto-delete attachments older than N days (0 = keep forever) | `7` |
+| `CRON_TIMEZONE` | Timezone for cron schedules (empty = server local) | `` |
 
 ---
 
@@ -186,7 +201,15 @@ Discord User
 Discord Bot (Go)
     ├── per-channel SessionStore   { agentName, sessionId, cwd }
     ├── per-channel JobQueue       buffered chan, FIFO
-    └── per-channel Worker         goroutine, sequential execution
+    ├── per-channel Worker         goroutine, sequential execution
+    ├── per-channel ChatLogger     JSONL conversation log
+    └── Heartbeat                  background maintenance loop
+          ├── HealthTask           agent liveness check + auto-restart
+          ├── CleanupTask          expired attachment removal
+          └── CronTask             scheduled jobs + one-shot reminders
+                │
+                ▼
+          Temp Agent (per job)     isolated context, auto-cleanup
           │
           ▼
     AcpClient (HTTP)
@@ -212,11 +235,23 @@ kiro-discord-bot/
 ├── start.sh              local start + watchdog script
 ├── bot/
 │   ├── bot.go            Discord init, Ready handler, slash command registration
-│   └── handler.go        message routing, slash command handlers
+│   ├── handler.go        message routing, slash command handlers
+│   ├── handler_cron.go   /cron Modal + /cron-list Button + /remind handlers
+│   ├── health_adapter.go heartbeat ↔ manager bridge
+│   └── cron_adapter.go   cron task ↔ manager bridge
 ├── channel/
 │   ├── manager.go        per-channel session + worker lifecycle
 │   ├── session.go        session struct + JSON persistence
-│   └── worker.go         job queue worker goroutine
+│   ├── worker.go         job queue worker goroutine
+│   └── logger.go         JSONL conversation logger
+├── heartbeat/
+│   ├── heartbeat.go      background task loop
+│   ├── task.go           Task interface
+│   ├── health.go         agent liveness check + auto-restart
+│   ├── cleanup.go        expired attachment removal
+│   ├── cron.go           cron scheduler + temp agent execution
+│   ├── cron_store.go     cron job persistence (JSON)
+│   └── schedule.go       natural language → cron/time parser
 ├── acp/
 │   ├── client.go         acp-bridge HTTP client + SSE stream parser
 │   └── sse.go
@@ -301,6 +336,9 @@ The agent will read the guide, build the binary, update `mcp.json`, and prompt y
 - **MCP servers:** Inherited from `~/.kiro/settings/mcp.json` automatically.
 - **Project steering:** Add `.kiro/steering/*.md` in the project directory to guide agent behavior.
 - **Long responses:** Automatically split into multiple messages with `(1/N)` labels.
+- **Conversation logs:** All user/agent interactions are recorded in `DATA_DIR/ch-<channelID>/chat.jsonl`.
+- **Attachments:** Stored in `DATA_DIR/ch-<channelID>/attachments/` with timestamp prefixes. Auto-cleaned after `ATTACHMENT_RETAIN_DAYS`.
+- **Cron jobs:** Definitions in `DATA_DIR/cron/cron.json`, execution history in `DATA_DIR/cron/<jobID>/history.jsonl` (includes full agent output).
 
 ---
 
