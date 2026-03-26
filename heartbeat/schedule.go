@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	L "github.com/nczz/kiro-discord-bot/locale"
 )
 
 // ParseSchedule converts natural language or raw cron expression to a cron expression.
@@ -81,7 +83,7 @@ func ParseSchedule(input string) (string, error) {
 		return fmt.Sprintf("%s %s * * *", times[0][2], times[0][1]), nil
 	}
 
-	return "", fmt.Errorf("無法解析排程: %s", s)
+	return "", fmt.Errorf(L.Getf("error.parse_schedule_internal", s))
 }
 
 // ParseTime converts natural language time to an absolute time.Time.
@@ -166,5 +168,5 @@ func ParseTime(input string, loc *time.Location) (time.Time, error) {
 		return target, nil
 	}
 
-	return time.Time{}, fmt.Errorf("無法解析時間: %s", s)
+	return time.Time{}, fmt.Errorf(L.Getf("error.parse_time_internal", s))
 }

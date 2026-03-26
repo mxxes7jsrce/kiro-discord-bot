@@ -198,21 +198,21 @@ func (c *CronTask) buildPrompt(job *CronJob, history []CronHistory) string {
 	sb.WriteString(fmt.Sprintf("[Discord context] channel_id=%s guild_id=%s\n\n", job.ChannelID, job.GuildID))
 
 	if job.OneShot {
-		sb.WriteString("[預約任務]\n")
+		sb.WriteString(L.Get("cron.prompt.reminder_header"))
 		sb.WriteString(job.Prompt)
 		return sb.String()
 	}
 
-	sb.WriteString(fmt.Sprintf("[排程任務: %s]\n", job.Name))
+	sb.WriteString(L.Getf("cron.prompt.task_header", job.Name))
 	if len(history) > 0 {
-		sb.WriteString("\n以下是過去的執行紀錄：\n---\n")
+		sb.WriteString(L.Get("cron.prompt.history_header"))
 		for _, h := range history {
 			ts, _ := time.Parse(time.RFC3339, h.Timestamp)
 			sb.WriteString(fmt.Sprintf("[%s] (%s) %s\n", ts.Format("01/02 15:04"), h.Status, h.Response))
 		}
 		sb.WriteString("---\n\n")
 	}
-	sb.WriteString("請執行：")
+	sb.WriteString(L.Get("cron.prompt.execute"))
 	sb.WriteString(job.Prompt)
 	return sb.String()
 }

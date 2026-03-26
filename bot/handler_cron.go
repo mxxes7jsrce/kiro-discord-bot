@@ -347,7 +347,7 @@ func (b *Bot) handleRemind(ds *discordgo.Session, i *discordgo.InteractionCreate
 	guildID := i.GuildID
 
 	job := &heartbeat.CronJob{
-		Name:          fmt.Sprintf("提醒：%s", truncate(content, 30)),
+		Name:          L.Getf("remind.name_prefix", truncate(content, 30)),
 		ChannelID:     i.ChannelID,
 		GuildID:       guildID,
 		Prompt:        content,
@@ -414,7 +414,7 @@ func (b *Bot) handleRemindText(ds *discordgo.Session, channelID, guildID, userID
 	}
 
 	job := &heartbeat.CronJob{
-		Name:          fmt.Sprintf("提醒：%s", truncate(prompt, 30)),
+		Name:          L.Getf("remind.name_prefix", truncate(prompt, 30)),
 		ChannelID:     channelID,
 		GuildID:       guildID,
 		Prompt:        prompt,

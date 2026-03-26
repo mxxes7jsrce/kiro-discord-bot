@@ -81,5 +81,12 @@
   "cron.label.reminder": "預約提醒",
   "remind.created": "🔔 已預約提醒\n時間：%s\n內容：%s",
   "remind.usage": "Usage: `!remind <時間> <內容>`\n例：`!remind 下午五點 提醒我要開會`",
-  "cmd.remind.opt.agent": "讓 agent 執行任務（預設：僅通知）"
+  "cmd.remind.opt.agent": "讓 agent 執行任務（預設：僅通知）",
+  "remind.name_prefix": "提醒：%s",
+  "cron.prompt.reminder_header": "[預約任務]\n",
+  "cron.prompt.history_header": "\n以下是過去的執行紀錄：\n---\n",
+  "cron.prompt.execute": "請執行：",
+  "cron.prompt.task_header": "[排程任務: %s]\n",
+  "error.parse_schedule_internal": "無法解析排程: %s",
+  "error.parse_time_internal": "無法解析時間: %s"
 }
