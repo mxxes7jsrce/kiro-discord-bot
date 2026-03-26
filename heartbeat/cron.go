@@ -20,6 +20,7 @@ type CronHistory struct {
 	Timestamp   string `json:"ts"`
 	Prompt      string `json:"prompt"`
 	Response    string `json:"response"`
+	FullLog     string `json:"full_log,omitempty"`
 	Status      string `json:"status"` // "ok" or "error"
 	DurationSec int    `json:"duration_sec"`
 }
@@ -28,7 +29,7 @@ type CronHistory struct {
 type CronDeps interface {
 	StartTempAgent(name, cwd, model string) error
 	StopTempAgent(name string)
-	AskAgent(ctx context.Context, name, prompt string) (string, error)
+	AskAgentStream(ctx context.Context, name, prompt string) (response string, fullLog string, err error)
 	Notify(channelID, msg string)
 }
 
@@ -151,7 +152,7 @@ func (c *CronTask) execute(job *CronJob, now time.Time) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	response, err := c.deps.AskAgent(ctx, agentName, prompt)
+	response, fullLog, err := c.deps.AskAgentStream(ctx, agentName, prompt)
 	duration := int(time.Since(start).Seconds())
 	status := "ok"
 
@@ -173,7 +174,7 @@ func (c *CronTask) execute(job *CronJob, now time.Time) {
 	}
 
 	c.saveHistory(job.ID, CronHistory{
-		Timestamp: now.Format(time.RFC3339), Prompt: job.Prompt, Response: response, Status: status, DurationSec: duration,
+		Timestamp: now.Format(time.RFC3339), Prompt: job.Prompt, Response: response, FullLog: fullLog, Status: status, DurationSec: duration,
 	})
 	c.finishJob(job, now)
 }

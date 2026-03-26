@@ -384,6 +384,23 @@ func (m *Manager) AskAgent(ctx context.Context, name, prompt string) (string, er
 	return result.Response, nil
 }
 
+// AskAgentStream sends a prompt and collects all streamed chunks as full log.
+// Returns (final response, full streamed log, error).
+func (m *Manager) AskAgentStream(ctx context.Context, name, prompt string) (string, string, error) {
+	var fullLog strings.Builder
+	result, err := m.acpClient.AskStream(ctx, name, prompt, func(chunk string) {
+		fullLog.WriteString(chunk)
+	})
+	if err != nil {
+		return "", fullLog.String(), err
+	}
+	response := result.Response
+	if response == "" {
+		response = fullLog.String()
+	}
+	return response, fullLog.String(), nil
+}
+
 // Pause sets the channel to mention-only mode.
 func (m *Manager) Pause(channelID string) {
 	m.mu.Lock()

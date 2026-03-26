@@ -23,12 +23,12 @@ func (a *cronAdapter) StopTempAgent(name string) {
 	a.bot.manager.StopTempAgent(name)
 }
 
-func (a *cronAdapter) AskAgent(ctx context.Context, name, prompt string) (string, error) {
+func (a *cronAdapter) AskAgentStream(ctx context.Context, name, prompt string) (string, string, error) {
 	// Wait for agent to be idle first
 	if err := a.bot.manager.WaitAgentIdle(name, 30*time.Second); err != nil {
-		return "", err
+		return "", "", err
 	}
-	return a.bot.manager.AskAgent(ctx, name, prompt)
+	return a.bot.manager.AskAgentStream(ctx, name, prompt)
 }
 
 func (a *cronAdapter) Notify(channelID, msg string) {
