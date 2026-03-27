@@ -61,6 +61,16 @@ func (m *Manager) stopChannel(channelID string) {
 	}
 }
 
+// StopAll stops all active workers and agents. Called during graceful shutdown.
+func (m *Manager) StopAll() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for chID := range m.agents {
+		m.stopChannel(chID)
+	}
+	log.Println("[manager] all agents stopped")
+}
+
 // Enqueue adds a job to the channel's queue, starting the agent/worker if needed.
 func (m *Manager) Enqueue(ds *discordgo.Session, job *Job) error {
 	m.mu.Lock()
@@ -156,16 +166,13 @@ func (m *Manager) Status(channelID string) string {
 // Cancel cancels the current running job for a channel.
 func (m *Manager) Cancel(channelID string) error {
 	m.mu.Lock()
-	agent, ok := m.agents[channelID]
+	w, ok := m.workers[channelID]
 	m.mu.Unlock()
 	if !ok {
 		return fmt.Errorf("no active session")
 	}
-	_, err := agent.Ask(context.Background(), "", nil) // cancel is handled via context in worker
-	_ = err
-	// Actually, cancel is done by the worker's context cancellation.
-	// For direct cancel, we need to restart the agent since cancel breaks the session.
-	return m.Restart(channelID)
+	w.CancelCurrent()
+	return nil
 }
 
 // StartAt resets the channel and starts a new agent at the given cwd.

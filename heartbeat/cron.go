@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/nczz/kiro-discord-bot/acp"
@@ -43,6 +43,7 @@ type CronTask struct {
 	dataDir  string
 	location *time.Location
 	parser   cron.Parser
+	running  sync.Map // job ID → bool
 }
 
 func NewCronTask(store *CronStore, deps CronDeps, dataDir string, tz string) *CronTask {
@@ -68,13 +69,16 @@ func (c *CronTask) ShouldRun(_ time.Time) bool {
 func (c *CronTask) Run() error {
 	now := time.Now().In(c.location)
 	for _, job := range c.store.All() {
-		if !job.Enabled || atomic.LoadInt32(&job.Running) == 1 {
+		if !job.Enabled {
+			continue
+		}
+		if _, loaded := c.running.LoadOrStore(job.ID, true); loaded {
 			continue
 		}
 		if !c.isDue(job, now) {
+			c.running.Delete(job.ID)
 			continue
 		}
-		atomic.StoreInt32(&job.Running, 1)
 		go c.execute(job, now)
 	}
 	return nil
@@ -115,7 +119,7 @@ func (c *CronTask) computeNext(schedule string, afterStr string) (time.Time, err
 }
 
 func (c *CronTask) execute(job *CronJob, now time.Time) {
-	defer atomic.StoreInt32(&job.Running, 0)
+	defer c.running.Delete(job.ID)
 
 	// Simple notify mode (no agent)
 	if job.OneShot && !job.UseAgent {

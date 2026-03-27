@@ -30,7 +30,6 @@ type CronJob struct {
 	LastRun       string `json:"last_run,omitempty"`
 	NextRun       string `json:"next_run,omitempty"`
 	UseAgent      bool   `json:"use_agent,omitempty"`
-	Running       int32  `json:"-"` // atomic: 1=running, 0=idle
 }
 
 // CronStore persists cron jobs to a JSON file.
@@ -80,7 +79,11 @@ func (s *CronStore) Get(id string) (*CronJob, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	j, ok := s.jobs[id]
-	return j, ok
+	if !ok {
+		return nil, false
+	}
+	cp := *j
+	return &cp, true
 }
 
 func (s *CronStore) Update(job *CronJob) error {
@@ -96,7 +99,8 @@ func (s *CronStore) ListByChannel(channelID string) []*CronJob {
 	var out []*CronJob
 	for _, j := range s.jobs {
 		if j.ChannelID == channelID {
-			out = append(out, j)
+			cp := *j
+			out = append(out, &cp)
 		}
 	}
 	return out
@@ -107,7 +111,8 @@ func (s *CronStore) All() []*CronJob {
 	defer s.mu.RUnlock()
 	out := make([]*CronJob, 0, len(s.jobs))
 	for _, j := range s.jobs {
-		out = append(out, j)
+		cp := *j
+		out = append(out, &cp)
 	}
 	return out
 }
@@ -118,7 +123,8 @@ func (s *CronStore) FindByName(channelID, name string) (*CronJob, bool) {
 	defer s.mu.RUnlock()
 	for _, j := range s.jobs {
 		if j.ChannelID == channelID && j.Name == name {
-			return j, true
+			cp := *j
+			return &cp, true
 		}
 	}
 	return nil, false

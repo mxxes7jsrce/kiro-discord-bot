@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,9 +28,9 @@ func (b *Bot) downloadAttachments(channelID string, attachments []*discordgo.Mes
 	ts := time.Now().Format("20060102-150405")
 	var paths []string
 	for _, att := range attachments {
-		resp, err := http.Get(att.URL)
+		resp, err := b.downloadClient.Get(att.URL)
 		if err != nil {
-			log.Printf("[attach] download %s: %v", att.Filename, err)
+			log.Printf("[attach] download %s: %v (url=%s)", att.Filename, err, att.URL)
 			continue
 		}
 		dst := filepath.Join(attDir, ts+"-"+att.Filename)
@@ -215,32 +214,34 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-var slashCommands = []*discordgo.ApplicationCommand{
-	{Name: "start", Description: L.Get("cmd.start.desc"), Options: []*discordgo.ApplicationCommandOption{
-		{Type: discordgo.ApplicationCommandOptionString, Name: "cwd", Description: L.Get("cmd.start.opt.cwd"), Required: true},
-	}},
-	{Name: "reset", Description: L.Get("cmd.reset.desc")},
-	{Name: "status", Description: L.Get("cmd.status.desc")},
-	{Name: "cancel", Description: L.Get("cmd.cancel.desc")},
-	{Name: "cwd", Description: L.Get("cmd.cwd.desc"), Options: []*discordgo.ApplicationCommandOption{
-		{Type: discordgo.ApplicationCommandOptionString, Name: "path", Description: L.Get("cmd.cwd.opt.path"), Required: false},
-	}},
-	{Name: "pause", Description: L.Get("cmd.pause.desc")},
-	{Name: "back", Description: L.Get("cmd.back.desc")},
-	{Name: "model", Description: L.Get("cmd.model.desc"), Options: []*discordgo.ApplicationCommandOption{
-		{Type: discordgo.ApplicationCommandOptionString, Name: "model", Description: L.Get("cmd.model.opt.model"), Required: false},
-	}},
-	{Name: "models", Description: L.Get("cmd.models.desc")},
-	{Name: "cron", Description: L.Get("cmd.cron.desc")},
-	{Name: "cron-list", Description: L.Get("cmd.cron_list.desc")},
-	{Name: "cron-run", Description: L.Get("cmd.cron_run.desc"), Options: []*discordgo.ApplicationCommandOption{
-		{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: L.Get("cmd.cron_run.opt.name"), Required: true},
-	}},
-	{Name: "remind", Description: L.Get("cmd.remind.desc"), Options: []*discordgo.ApplicationCommandOption{
-		{Type: discordgo.ApplicationCommandOptionString, Name: "time", Description: L.Get("cmd.remind.opt.time"), Required: true},
-		{Type: discordgo.ApplicationCommandOptionString, Name: "content", Description: L.Get("cmd.remind.opt.content"), Required: true},
-		{Type: discordgo.ApplicationCommandOptionBoolean, Name: "agent", Description: L.Get("cmd.remind.opt.agent"), Required: false},
-	}},
+func buildSlashCommands() []*discordgo.ApplicationCommand {
+	return []*discordgo.ApplicationCommand{
+		{Name: "start", Description: L.Get("cmd.start.desc"), Options: []*discordgo.ApplicationCommandOption{
+			{Type: discordgo.ApplicationCommandOptionString, Name: "cwd", Description: L.Get("cmd.start.opt.cwd"), Required: true},
+		}},
+		{Name: "reset", Description: L.Get("cmd.reset.desc")},
+		{Name: "status", Description: L.Get("cmd.status.desc")},
+		{Name: "cancel", Description: L.Get("cmd.cancel.desc")},
+		{Name: "cwd", Description: L.Get("cmd.cwd.desc"), Options: []*discordgo.ApplicationCommandOption{
+			{Type: discordgo.ApplicationCommandOptionString, Name: "path", Description: L.Get("cmd.cwd.opt.path"), Required: false},
+		}},
+		{Name: "pause", Description: L.Get("cmd.pause.desc")},
+		{Name: "back", Description: L.Get("cmd.back.desc")},
+		{Name: "model", Description: L.Get("cmd.model.desc"), Options: []*discordgo.ApplicationCommandOption{
+			{Type: discordgo.ApplicationCommandOptionString, Name: "model", Description: L.Get("cmd.model.opt.model"), Required: false},
+		}},
+		{Name: "models", Description: L.Get("cmd.models.desc")},
+		{Name: "cron", Description: L.Get("cmd.cron.desc")},
+		{Name: "cron-list", Description: L.Get("cmd.cron_list.desc")},
+		{Name: "cron-run", Description: L.Get("cmd.cron_run.desc"), Options: []*discordgo.ApplicationCommandOption{
+			{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: L.Get("cmd.cron_run.opt.name"), Required: true},
+		}},
+		{Name: "remind", Description: L.Get("cmd.remind.desc"), Options: []*discordgo.ApplicationCommandOption{
+			{Type: discordgo.ApplicationCommandOptionString, Name: "time", Description: L.Get("cmd.remind.opt.time"), Required: true},
+			{Type: discordgo.ApplicationCommandOptionString, Name: "content", Description: L.Get("cmd.remind.opt.content"), Required: true},
+			{Type: discordgo.ApplicationCommandOptionBoolean, Name: "agent", Description: L.Get("cmd.remind.opt.agent"), Required: false},
+		}},
+	}
 }
 
 func (b *Bot) registerSlashCommands() {
@@ -249,7 +250,7 @@ func (b *Bot) registerSlashCommands() {
 	if _, err := b.discord.ApplicationCommandBulkOverwrite(b.discord.State.User.ID, "", []*discordgo.ApplicationCommand{}); err != nil {
 		log.Printf("[slash] clear global commands: %v", err)
 	}
-	created, err := b.discord.ApplicationCommandBulkOverwrite(b.discord.State.User.ID, guildID, slashCommands)
+	created, err := b.discord.ApplicationCommandBulkOverwrite(b.discord.State.User.ID, guildID, buildSlashCommands())
 	if err != nil {
 		log.Printf("[slash] bulk overwrite error: %v", err)
 		return

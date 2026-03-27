@@ -7,19 +7,20 @@ import (
 )
 
 type Config struct {
-	DiscordToken    string
-	KiroCLIPath     string
-	DefaultCWD      string
-	AskTimeoutSec   int
-	QueueBufferSize int
-	DataDir         string
-	StreamUpdateSec int
-	DiscordGuildID  string
-	KiroModel       string
-	HeartbeatSec    int
-	AttRetainDays   int
-	CronTimezone    string
-	BotLocale       string
+	DiscordToken       string
+	KiroCLIPath        string
+	DefaultCWD         string
+	AskTimeoutSec      int
+	QueueBufferSize    int
+	DataDir            string
+	StreamUpdateSec    int
+	DiscordGuildID     string
+	KiroModel          string
+	HeartbeatSec       int
+	AttRetainDays      int
+	CronTimezone       string
+	BotLocale          string
+	DownloadTimeoutSec int
 }
 
 func loadConfig() *Config {
@@ -35,8 +36,9 @@ func loadConfig() *Config {
 		KiroModel:       envOr("KIRO_MODEL", ""),
 		HeartbeatSec:    envInt("HEARTBEAT_SEC", 60),
 		AttRetainDays:   envInt("ATTACHMENT_RETAIN_DAYS", 7),
-		CronTimezone:    envOr("CRON_TIMEZONE", ""),
-		BotLocale:       envOr("BOT_LOCALE", "en"),
+		CronTimezone:       envOr("CRON_TIMEZONE", ""),
+		BotLocale:          envOr("BOT_LOCALE", "en"),
+		DownloadTimeoutSec: envInt("DOWNLOAD_TIMEOUT_SEC", 120),
 	}
 }
 

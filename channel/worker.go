@@ -36,6 +36,9 @@ type Worker struct {
 	started         sync.Once
 	logger          *ChatLogger
 	model           string
+
+	cancelMu sync.Mutex
+	cancelFn context.CancelFunc // cancel the currently running job
 }
 
 func NewWorker(channelID string, agent *acp.Agent, bufSize, askTimeoutSec, streamUpdateSec int, logger *ChatLogger, model string) *Worker {
@@ -74,6 +77,16 @@ func (w *Worker) Stop() {
 	w.stopped.Do(func() {
 		close(w.stopCh)
 	})
+}
+
+// CancelCurrent cancels the currently running job, if any.
+func (w *Worker) CancelCurrent() {
+	w.cancelMu.Lock()
+	fn := w.cancelFn
+	w.cancelMu.Unlock()
+	if fn != nil {
+		fn()
+	}
 }
 
 func (w *Worker) run() {
@@ -115,6 +128,14 @@ func (w *Worker) execute(job *Job) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(w.askTimeoutSec)*time.Second)
 	defer cancel()
+	w.cancelMu.Lock()
+	w.cancelFn = cancel
+	w.cancelMu.Unlock()
+	defer func() {
+		w.cancelMu.Lock()
+		w.cancelFn = nil
+		w.cancelMu.Unlock()
+	}()
 
 	var mu sync.Mutex
 	accumulated := ""
@@ -150,6 +171,9 @@ func (w *Worker) execute(job *Job) {
 		errMsg := err.Error()
 		if ctx.Err() == context.DeadlineExceeded {
 			errMsg = L.Getf("worker.timeout", w.askTimeoutSec)
+			swapReaction(ds, job.ChannelID, job.MessageID, "🔄", "⚠️")
+		} else if ctx.Err() == context.Canceled {
+			errMsg = L.Get("cancel.success")
 			swapReaction(ds, job.ChannelID, job.MessageID, "🔄", "⚠️")
 		} else {
 			swapReaction(ds, job.ChannelID, job.MessageID, "🔄", "❌")

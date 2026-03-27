@@ -3,6 +3,8 @@ package bot
 import (
 	"context"
 	"log"
+	"net/http"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/nczz/kiro-discord-bot/channel"
@@ -10,15 +12,16 @@ import (
 )
 
 type Bot struct {
-	discord      *discordgo.Session
-	manager      *channel.Manager
-	guildID      string
-	dataDir      string
-	hb           *heartbeat.Heartbeat
-	hbCancel     context.CancelFunc
-	cronStore    *heartbeat.CronStore
-	cronTimezone string
-	version      string
+	discord        *discordgo.Session
+	manager        *channel.Manager
+	guildID        string
+	dataDir        string
+	hb             *heartbeat.Heartbeat
+	hbCancel       context.CancelFunc
+	cronStore      *heartbeat.CronStore
+	cronTimezone   string
+	version        string
+	downloadClient *http.Client
 }
 
 func New(cfg interface{ GetBotConfig() BotConfig }) (*Bot, error) {
@@ -26,19 +29,20 @@ func New(cfg interface{ GetBotConfig() BotConfig }) (*Bot, error) {
 }
 
 type BotConfig struct {
-	DiscordToken    string
-	KiroCLIPath     string
-	DefaultCWD      string
-	DataDir         string
-	QueueBufferSize int
-	AskTimeoutSec   int
-	StreamUpdateSec int
-	GuildID         string
-	KiroModel       string
-	HeartbeatSec    int
-	AttRetainDays   int
-	CronTimezone    string
-	BotVersion      string
+	DiscordToken       string
+	KiroCLIPath        string
+	DefaultCWD         string
+	DataDir            string
+	QueueBufferSize    int
+	AskTimeoutSec      int
+	StreamUpdateSec    int
+	GuildID            string
+	KiroModel          string
+	HeartbeatSec       int
+	AttRetainDays      int
+	CronTimezone       string
+	BotVersion         string
+	DownloadTimeoutSec int
 }
 
 func NewFromConfig(cfg BotConfig) (*Bot, error) {
@@ -60,7 +64,9 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 		cfg.KiroModel, cfg.DataDir, cfg.BotVersion,
 	)
 
-	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID, dataDir: cfg.DataDir, cronTimezone: cfg.CronTimezone, version: cfg.BotVersion}
+	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID, dataDir: cfg.DataDir, cronTimezone: cfg.CronTimezone, version: cfg.BotVersion,
+		downloadClient: &http.Client{Timeout: time.Duration(cfg.DownloadTimeoutSec) * time.Second},
+	}
 
 	cronStore, err := heartbeat.NewCronStore(cfg.DataDir)
 	if err != nil {
@@ -97,5 +103,6 @@ func (b *Bot) Stop() {
 	if b.hbCancel != nil {
 		b.hbCancel()
 	}
+	b.manager.StopAll()
 	b.discord.Close()
 }
