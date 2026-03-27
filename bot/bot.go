@@ -28,6 +28,12 @@ func New(cfg interface{ GetBotConfig() BotConfig }) (*Bot, error) {
 	return NewFromConfig(cfg.GetBotConfig())
 }
 
+// isMyGuild returns true if the given guildID belongs to this bot instance.
+// Returns true if bot has no guild restriction (guildID is empty).
+func (b *Bot) isMyGuild(guildID string) bool {
+	return b.guildID == "" || guildID == b.guildID
+}
+
 type BotConfig struct {
 	DiscordToken       string
 	KiroCLIPath        string
@@ -83,7 +89,7 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 	hb := heartbeat.New(cfg.HeartbeatSec)
 	hb.Register(heartbeat.NewHealthTask(&healthAdapter{bot: b}))
 	hb.Register(heartbeat.NewCleanupTask(cfg.DataDir, cfg.AttRetainDays))
-	hb.Register(heartbeat.NewCronTask(cronStore, &cronAdapter{bot: b}, cfg.DataDir, cfg.CronTimezone))
+	hb.Register(heartbeat.NewCronTask(cronStore, &cronAdapter{bot: b}, cfg.DataDir, cfg.CronTimezone, cfg.GuildID))
 	b.hb = hb
 	ds.AddHandler(b.handleMessage)
 	ds.AddHandler(b.handleInteraction)

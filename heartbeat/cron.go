@@ -44,9 +44,10 @@ type CronTask struct {
 	location *time.Location
 	parser   cron.Parser
 	running  sync.Map // job ID → bool
+	guildID  string
 }
 
-func NewCronTask(store *CronStore, deps CronDeps, dataDir string, tz string) *CronTask {
+func NewCronTask(store *CronStore, deps CronDeps, dataDir string, tz string, guildID string) *CronTask {
 	loc, err := time.LoadLocation(tz)
 	if err != nil {
 		loc = time.Now().Location()
@@ -57,6 +58,7 @@ func NewCronTask(store *CronStore, deps CronDeps, dataDir string, tz string) *Cr
 		dataDir:  dataDir,
 		location: loc,
 		parser:   cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow),
+		guildID:  guildID,
 	}
 }
 
@@ -70,6 +72,9 @@ func (c *CronTask) Run() error {
 	now := time.Now().In(c.location)
 	for _, job := range c.store.All() {
 		if !job.Enabled {
+			continue
+		}
+		if c.guildID != "" && job.GuildID != c.guildID {
 			continue
 		}
 		if _, loaded := c.running.LoadOrStore(job.ID, true); loaded {
