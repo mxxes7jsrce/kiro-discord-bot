@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/nczz/kiro-discord-bot/acp"
@@ -142,16 +143,21 @@ func (w *Worker) execute(job *Job) {
 	lastUpdate := time.Now()
 	statusLine := L.Get("worker.processing")
 
+	w.agent.OnToolUseFunc(func(started bool) {
+		mu.Lock()
+		if started {
+			statusLine = L.Get("worker.tool_running")
+			swapReaction(ds, job.ChannelID, job.MessageID, "🔄", "⚙️")
+		} else {
+			statusLine = L.Get("worker.processing")
+			swapReaction(ds, job.ChannelID, job.MessageID, "⚙️", "🔄")
+		}
+		mu.Unlock()
+	})
+
 	onChunk := func(chunk string) {
 		mu.Lock()
 		accumulated += chunk
-		lower := strings.ToLower(chunk)
-		for _, kw := range []string{"running tool", "bash", "read_file", "write_file", "fs_read", "fs_write", "execute"} {
-			if strings.Contains(lower, kw) {
-				statusLine = L.Get("worker.tool_running")
-				break
-			}
-		}
 		shouldUpdate := time.Since(lastUpdate) >= time.Duration(w.streamUpdateSec)*time.Second
 		snap := accumulated
 		status := statusLine
@@ -209,7 +215,7 @@ func (w *Worker) execute(job *Job) {
 
 func editMessage(ds *discordgo.Session, channelID, msgID, content string) {
 	if len(content) > 2000 {
-		content = content[:1997] + "..."
+		content = truncateUTF8(content, 1997) + "..."
 	}
 	_, _ = ds.ChannelMessageEdit(channelID, msgID, content)
 }
@@ -239,13 +245,31 @@ func splitMessage(s string, limit int) []string {
 	for len(s) > limit {
 		idx := strings.LastIndex(s[:limit], "\n")
 		if idx < limit/2 {
+			// No good newline break — find a valid UTF-8 boundary near limit
 			idx = limit
+			for idx > 0 && !utf8.RuneStart(s[idx]) {
+				idx--
+			}
 		}
 		parts = append(parts, s[:idx])
 		s = s[idx:]
+		if len(s) > 0 && s[0] == '\n' {
+			s = s[1:]
+		}
 	}
 	if s != "" {
 		parts = append(parts, s)
 	}
 	return parts
+}
+
+// truncateUTF8 truncates s to at most maxBytes without breaking a multi-byte character.
+func truncateUTF8(s string, maxBytes int) string {
+	if len(s) <= maxBytes {
+		return s
+	}
+	for maxBytes > 0 && !utf8.RuneStart(s[maxBytes]) {
+		maxBytes--
+	}
+	return s[:maxBytes]
 }

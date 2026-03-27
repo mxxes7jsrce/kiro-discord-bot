@@ -92,7 +92,9 @@ func (c *CronTask) isDue(job *CronJob, now time.Time) bool {
 			return false
 		}
 		job.NextRun = next.Format(time.RFC3339)
-		_ = c.store.Update(job)
+		if err := c.store.Update(job); err != nil {
+			log.Printf("[cron] save next run for %s: %v", job.ID, err)
+		}
 	}
 	if job.NextRun == "" {
 		return false
@@ -225,7 +227,9 @@ func (c *CronTask) buildPrompt(job *CronJob, history []CronHistory) string {
 
 func (c *CronTask) finishJob(job *CronJob, after time.Time) {
 	if job.OneShot {
-		_ = c.store.Remove(job.ID)
+		if err := c.store.Remove(job.ID); err != nil {
+			log.Printf("[cron] remove one-shot %s: %v", job.ID, err)
+		}
 		log.Printf("[cron] one-shot job %s (%s) completed and removed", job.ID, job.Name)
 		return
 	}
@@ -239,7 +243,9 @@ func (c *CronTask) advanceNextRun(job *CronJob, after time.Time) {
 	}
 	job.LastRun = after.Format(time.RFC3339)
 	job.NextRun = sched.Next(after).Format(time.RFC3339)
-	_ = c.store.Update(job)
+	if err := c.store.Update(job); err != nil {
+		log.Printf("[cron] advance next run for %s: %v", job.ID, err)
+	}
 }
 
 func (c *CronTask) historyPath(jobID string) string {

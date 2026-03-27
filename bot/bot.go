@@ -57,12 +57,17 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 		return nil, err
 	}
 
-	manager := channel.NewManager(
-		store,
-		cfg.KiroCLIPath, cfg.DefaultCWD,
-		cfg.QueueBufferSize, cfg.AskTimeoutSec, cfg.StreamUpdateSec,
-		cfg.KiroModel, cfg.DataDir, cfg.BotVersion,
-	)
+	manager := channel.NewManager(channel.ManagerConfig{
+		Store:           store,
+		KiroCLI:         cfg.KiroCLIPath,
+		DefaultCWD:      cfg.DefaultCWD,
+		QueueBufSize:    cfg.QueueBufferSize,
+		AskTimeoutSec:   cfg.AskTimeoutSec,
+		StreamUpdateSec: cfg.StreamUpdateSec,
+		DefaultModel:    cfg.KiroModel,
+		DataDir:         cfg.DataDir,
+		BotVersion:      cfg.BotVersion,
+	})
 
 	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID, dataDir: cfg.DataDir, cronTimezone: cfg.CronTimezone, version: cfg.BotVersion,
 		downloadClient: &http.Client{Timeout: time.Duration(cfg.DownloadTimeoutSec) * time.Second},

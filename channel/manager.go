@@ -32,20 +32,33 @@ type Manager struct {
 	botVersion      string
 }
 
-func NewManager(store *SessionStore, kiroCLI, defaultCWD string, queueBufSize, askTimeoutSec, streamUpdateSec int, defaultModel string, dataDir string, botVersion string) *Manager {
+// ManagerConfig holds configuration for creating a Manager.
+type ManagerConfig struct {
+	Store           *SessionStore
+	KiroCLI         string
+	DefaultCWD      string
+	QueueBufSize    int
+	AskTimeoutSec   int
+	StreamUpdateSec int
+	DefaultModel    string
+	DataDir         string
+	BotVersion      string
+}
+
+func NewManager(cfg ManagerConfig) *Manager {
 	return &Manager{
 		workers:         make(map[string]*Worker),
 		agents:          make(map[string]*acp.Agent),
 		paused:          make(map[string]bool),
-		store:           store,
-		kiroCLI:         kiroCLI,
-		defaultCWD:      defaultCWD,
-		queueBufSize:    queueBufSize,
-		askTimeoutSec:   askTimeoutSec,
-		streamUpdateSec: streamUpdateSec,
-		defaultModel:    defaultModel,
-		logger:          NewChatLogger(dataDir),
-		botVersion:      botVersion,
+		store:           cfg.Store,
+		kiroCLI:         cfg.KiroCLI,
+		defaultCWD:      cfg.DefaultCWD,
+		queueBufSize:    cfg.QueueBufSize,
+		askTimeoutSec:   cfg.AskTimeoutSec,
+		streamUpdateSec: cfg.StreamUpdateSec,
+		defaultModel:    cfg.DefaultModel,
+		logger:          NewChatLogger(cfg.DataDir),
+		botVersion:      cfg.BotVersion,
 	}
 }
 
@@ -68,6 +81,7 @@ func (m *Manager) StopAll() {
 	for chID := range m.agents {
 		m.stopChannel(chID)
 	}
+	m.logger.Close()
 	log.Println("[manager] all agents stopped")
 }
 
@@ -106,7 +120,9 @@ func (m *Manager) Reset(channelID string) error {
 	m.stopChannel(channelID)
 
 	if sess != nil {
-		_ = m.store.Set(channelID, &Session{CWD: sess.CWD, Model: sess.Model})
+		if err := m.store.Set(channelID, &Session{CWD: sess.CWD, Model: sess.Model}); err != nil {
+			log.Printf("[manager] save session on reset: %v", err)
+		}
 	}
 	return nil
 }
@@ -120,7 +136,9 @@ func (m *Manager) Restart(channelID string) error {
 	m.stopChannel(channelID)
 
 	if sess != nil {
-		_ = m.store.Set(channelID, &Session{CWD: sess.CWD, Model: sess.Model})
+		if err := m.store.Set(channelID, &Session{CWD: sess.CWD, Model: sess.Model}); err != nil {
+			log.Printf("[manager] save session on restart: %v", err)
+		}
 	}
 	_, err := m.startAgentAndWorker(channelID)
 	return err

@@ -25,7 +25,8 @@ type Agent struct {
 	mu          sync.Mutex
 	currentText strings.Builder
 	onChunk     func(string)
-	onExit      func() // called when child process exits unexpectedly
+	onToolUse   func(bool) // called with true on tool_use start, false on end
+	onExit      func()     // called when child process exits unexpectedly
 
 	initResult *InitializeResult
 	stopOnce   sync.Once
@@ -155,15 +156,33 @@ func (a *Agent) handleNotification(method string, params json.RawMessage) {
 	if json.Unmarshal(params, &notif) != nil {
 		return
 	}
-	if notif.Update.SessionUpdate != "agent_message_chunk" || notif.Update.Content == nil || notif.Update.Content.Text == "" {
-		return
-	}
-	a.mu.Lock()
-	a.currentText.WriteString(notif.Update.Content.Text)
-	cb := a.onChunk
-	a.mu.Unlock()
-	if cb != nil {
-		cb(notif.Update.Content.Text)
+
+	switch notif.Update.SessionUpdate {
+	case "agent_message_chunk":
+		if notif.Update.Content == nil || notif.Update.Content.Text == "" {
+			return
+		}
+		a.mu.Lock()
+		a.currentText.WriteString(notif.Update.Content.Text)
+		cb := a.onChunk
+		a.mu.Unlock()
+		if cb != nil {
+			cb(notif.Update.Content.Text)
+		}
+	case "tool_use_start":
+		a.mu.Lock()
+		cb := a.onToolUse
+		a.mu.Unlock()
+		if cb != nil {
+			cb(true)
+		}
+	case "tool_use_end":
+		a.mu.Lock()
+		cb := a.onToolUse
+		a.mu.Unlock()
+		if cb != nil {
+			cb(false)
+		}
 	}
 }
 
@@ -189,6 +208,13 @@ func (a *Agent) IsAlive() bool {
 func (a *Agent) OnExitFunc(fn func()) {
 	a.mu.Lock()
 	a.onExit = fn
+	a.mu.Unlock()
+}
+
+// OnToolUseFunc sets a callback invoked when tool use starts (true) or ends (false).
+func (a *Agent) OnToolUseFunc(fn func(bool)) {
+	a.mu.Lock()
+	a.onToolUse = fn
 	a.mu.Unlock()
 }
 
@@ -227,6 +253,7 @@ func (a *Agent) Ask(ctx context.Context, prompt string, onChunk func(string)) (s
 		a.mu.Lock()
 		a.state = "idle"
 		a.onChunk = nil
+		a.onToolUse = nil
 		a.mu.Unlock()
 	}()
 

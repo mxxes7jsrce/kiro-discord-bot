@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
+	"strconv"
 )
 
 type Config struct {
@@ -62,8 +62,8 @@ func envInt(key string, def int) int {
 	if v == "" {
 		return def
 	}
-	var n int
-	if _, err := fmt.Sscanf(v, "%d", &n); err != nil {
+	n, err := strconv.Atoi(v)
+	if err != nil {
 		return def
 	}
 	return n

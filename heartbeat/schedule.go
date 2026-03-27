@@ -3,6 +3,7 @@ package heartbeat
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -97,15 +98,13 @@ func ParseTime(input string, loc *time.Location) (time.Time, error) {
 
 	// N 分鐘後 / N min later
 	if m := regexp.MustCompile(`(\d+)\s*(?:分鐘|分|min)(?:後|later)?`).FindStringSubmatch(s); m != nil {
-		n := 0
-		fmt.Sscanf(m[1], "%d", &n)
+		n, _ := strconv.Atoi(m[1])
 		return now.Add(time.Duration(n) * time.Minute), nil
 	}
 
 	// N 小時後 / N hour later
 	if m := regexp.MustCompile(`(\d+)\s*(?:小時|hour)(?:後|later)?`).FindStringSubmatch(s); m != nil {
-		n := 0
-		fmt.Sscanf(m[1], "%d", &n)
+		n, _ := strconv.Atoi(m[1])
 		return now.Add(time.Duration(n) * time.Hour), nil
 	}
 
@@ -132,11 +131,11 @@ func ParseTime(input string, loc *time.Location) (time.Time, error) {
 		if h, ok := cnNums[hourStr]; ok {
 			hour = h
 		} else {
-			fmt.Sscanf(hourStr, "%d", &hour)
+			hour, _ = strconv.Atoi(hourStr)
 		}
 		min := 0
 		if minStr != "" {
-			fmt.Sscanf(minStr, "%d", &min)
+			min, _ = strconv.Atoi(minStr)
 		}
 
 		if period == "下午" || period == "晚上" {
@@ -156,9 +155,8 @@ func ParseTime(input string, loc *time.Location) (time.Time, error) {
 
 	// HH:MM format
 	if m := regexp.MustCompile(`^(?:明天\s*)?(\d{1,2}):(\d{2})$`).FindStringSubmatch(s); m != nil {
-		hour, min := 0, 0
-		fmt.Sscanf(m[1], "%d", &hour)
-		fmt.Sscanf(m[2], "%d", &min)
+		hour, _ := strconv.Atoi(m[1])
+		min, _ := strconv.Atoi(m[2])
 		target := time.Date(now.Year(), now.Month(), now.Day(), hour, min, 0, 0, loc)
 		if strings.HasPrefix(s, "明天") {
 			target = target.AddDate(0, 0, 1)

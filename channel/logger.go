@@ -27,10 +27,35 @@ type ChatEntry struct {
 type ChatLogger struct {
 	mu      sync.Mutex
 	dataDir string
+	files   map[string]*os.File // channelID → open file handle
 }
 
 func NewChatLogger(dataDir string) *ChatLogger {
-	return &ChatLogger{dataDir: dataDir}
+	return &ChatLogger{dataDir: dataDir, files: make(map[string]*os.File)}
+}
+
+func (l *ChatLogger) getFile(channelID string) (*os.File, error) {
+	if f, ok := l.files[channelID]; ok {
+		return f, nil
+	}
+	dir := filepath.Join(l.dataDir, "ch-"+channelID)
+	_ = os.MkdirAll(dir, 0755)
+	f, err := os.OpenFile(filepath.Join(dir, "chat.jsonl"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	l.files[channelID] = f
+	return f, nil
+}
+
+// Close closes all open log file handles.
+func (l *ChatLogger) Close() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, f := range l.files {
+		f.Close()
+	}
+	l.files = make(map[string]*os.File)
 }
 
 func (l *ChatLogger) Log(channelID string, entry ChatEntry) {
@@ -43,17 +68,13 @@ func (l *ChatLogger) Log(channelID string, entry ChatEntry) {
 	}
 	data = append(data, '\n')
 
-	dir := filepath.Join(l.dataDir, "ch-"+channelID)
-	_ = os.MkdirAll(dir, 0755)
-
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	f, err := os.OpenFile(filepath.Join(dir, "chat.jsonl"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := l.getFile(channelID)
 	if err != nil {
 		return
 	}
-	defer f.Close()
 	_, _ = f.Write(data)
 }
 
