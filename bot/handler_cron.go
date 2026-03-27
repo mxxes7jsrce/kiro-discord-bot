@@ -157,20 +157,20 @@ func (b *Bot) handleCronList(ds *discordgo.Session, i *discordgo.InteractionCrea
 			status = "🔔"
 		}
 
-		lastRun := "無"
+		lastRun := L.Get("cron.list.last_run_none")
 		if job.LastRun != "" {
 			if t, err := time.Parse(time.RFC3339, job.LastRun); err == nil {
 				lastRun = t.Format("01/02 15:04")
 			}
 		}
-		nextRun := "計算中"
+		nextRun := L.Get("cron.list.next_run_pending")
 		if job.NextRun != "" {
 			if t, err := time.Parse(time.RFC3339, job.NextRun); err == nil {
 				nextRun = t.Format("01/02 15:04")
 			}
 		}
 
-		content := fmt.Sprintf("%s **%s**\n頻率：%s | 上次：%s | 下次：%s\nPrompt：%s",
+		content := L.Getf("cron.list.item",
 			status, job.Name, job.ScheduleHuman, lastRun, nextRun, truncate(job.Prompt, 100))
 
 		// Build buttons

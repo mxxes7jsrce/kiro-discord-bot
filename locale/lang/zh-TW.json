@@ -88,5 +88,8 @@
   "cron.prompt.execute": "請執行：",
   "cron.prompt.task_header": "[排程任務: %s]\n",
   "error.parse_schedule_internal": "無法解析排程: %s",
-  "error.parse_time_internal": "無法解析時間: %s"
+  "error.parse_time_internal": "無法解析時間: %s",
+  "cron.list.last_run_none": "無",
+  "cron.list.next_run_pending": "計算中",
+  "cron.list.item": "%s **%s**\n頻率：%s | 上次：%s | 下次：%s\nPrompt：%s"
 }

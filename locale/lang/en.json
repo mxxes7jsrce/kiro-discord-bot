@@ -95,5 +95,8 @@
   "cron.prompt.execute": "Please execute: ",
   "cron.prompt.task_header": "[Scheduled Task: %s]\n",
   "error.parse_schedule_internal": "cannot parse schedule: %s",
-  "error.parse_time_internal": "cannot parse time: %s"
+  "error.parse_time_internal": "cannot parse time: %s",
+  "cron.list.last_run_none": "N/A",
+  "cron.list.next_run_pending": "pending",
+  "cron.list.item": "%s **%s**\nSchedule: %s | Last: %s | Next: %s\nPrompt: %s"
 }
