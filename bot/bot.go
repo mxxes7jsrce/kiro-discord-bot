@@ -18,6 +18,7 @@ type Bot struct {
 	hbCancel     context.CancelFunc
 	cronStore    *heartbeat.CronStore
 	cronTimezone string
+	version      string
 }
 
 func New(cfg interface{ GetBotConfig() BotConfig }) (*Bot, error) {
@@ -37,6 +38,7 @@ type BotConfig struct {
 	HeartbeatSec    int
 	AttRetainDays   int
 	CronTimezone    string
+	BotVersion      string
 }
 
 func NewFromConfig(cfg BotConfig) (*Bot, error) {
@@ -55,10 +57,10 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 		store,
 		cfg.KiroCLIPath, cfg.DefaultCWD,
 		cfg.QueueBufferSize, cfg.AskTimeoutSec, cfg.StreamUpdateSec,
-		cfg.KiroModel, cfg.DataDir,
+		cfg.KiroModel, cfg.DataDir, cfg.BotVersion,
 	)
 
-	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID, dataDir: cfg.DataDir, cronTimezone: cfg.CronTimezone}
+	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID, dataDir: cfg.DataDir, cronTimezone: cfg.CronTimezone, version: cfg.BotVersion}
 
 	cronStore, err := heartbeat.NewCronStore(cfg.DataDir)
 	if err != nil {
@@ -79,7 +81,7 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 func (b *Bot) Start() error {
 	b.discord.AddHandler(func(ds *discordgo.Session, r *discordgo.Ready) {
 		log.Printf("Bot running as %s#%s", r.User.Username, r.User.Discriminator)
-		_ = ds.UpdateGameStatus(0, "kiro-cli agent")
+		_ = ds.UpdateGameStatus(0, "kiro-cli agent "+b.version)
 		b.registerSlashCommands()
 	})
 	if err := b.discord.Open(); err != nil {

@@ -14,7 +14,8 @@ if pgrep -f "kiro-discord-bot" > /dev/null 2>&1; then
 fi
 
 # Build
-go build -o /tmp/kiro-discord-bot .
+VERSION=$(git describe --tags --always 2>/dev/null || echo "dev")
+go build -ldflags "-X main.Version=$VERSION" -o /tmp/kiro-discord-bot .
 
 # Start bot with watchdog
 (while true; do

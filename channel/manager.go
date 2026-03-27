@@ -29,9 +29,10 @@ type Manager struct {
 	streamUpdateSec int
 	defaultModel    string
 	logger          *ChatLogger
+	botVersion      string
 }
 
-func NewManager(store *SessionStore, kiroCLI, defaultCWD string, queueBufSize, askTimeoutSec, streamUpdateSec int, defaultModel string, dataDir string) *Manager {
+func NewManager(store *SessionStore, kiroCLI, defaultCWD string, queueBufSize, askTimeoutSec, streamUpdateSec int, defaultModel string, dataDir string, botVersion string) *Manager {
 	return &Manager{
 		workers:         make(map[string]*Worker),
 		agents:          make(map[string]*acp.Agent),
@@ -44,6 +45,7 @@ func NewManager(store *SessionStore, kiroCLI, defaultCWD string, queueBufSize, a
 		streamUpdateSec: streamUpdateSec,
 		defaultModel:    defaultModel,
 		logger:          NewChatLogger(dataDir),
+		botVersion:      botVersion,
 	}
 }
 
@@ -148,7 +150,7 @@ func (m *Manager) Status(channelID string) string {
 		kiroVersion = "n/a"
 	}
 
-	return L.Getf("status.format", sess.AgentName, state, qLen, sid, modelDisplay(sess.Model), kiroVersion)
+	return L.Getf("status.format", sess.AgentName, state, qLen, sid, modelDisplay(sess.Model), kiroVersion, m.botVersion)
 }
 
 // Cancel cancels the current running job for a channel.

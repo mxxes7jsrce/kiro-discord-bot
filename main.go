@@ -22,6 +22,8 @@ func main() {
 		}
 	}
 
+	log.Printf("kiro-discord-bot %s starting", Version)
+
 	b, err := bot.NewFromConfig(bot.BotConfig{
 		DiscordToken:    cfg.DiscordToken,
 		KiroCLIPath:     cfg.KiroCLIPath,
@@ -35,6 +37,7 @@ func main() {
 		HeartbeatSec:    cfg.HeartbeatSec,
 		AttRetainDays:   cfg.AttRetainDays,
 		CronTimezone:    cfg.CronTimezone,
+		BotVersion:      Version,
 	})
 	if err != nil {
 		log.Fatal(err)
