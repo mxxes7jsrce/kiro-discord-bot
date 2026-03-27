@@ -377,10 +377,12 @@ func (m *Manager) GetAgent(channelID string) (*acp.Agent, bool) {
 
 // ActiveSessions returns all channels with an active agent (for heartbeat).
 func (m *Manager) ActiveSessions() []struct{ ChannelID, AgentName string } {
-	all := m.store.All()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	var out []struct{ ChannelID, AgentName string }
-	for chID, sess := range all {
-		if sess.AgentName != "" {
+	for chID := range m.agents {
+		sess, ok := m.store.Get(chID)
+		if ok && sess.AgentName != "" {
 			out = append(out, struct{ ChannelID, AgentName string }{chID, sess.AgentName})
 		}
 	}
