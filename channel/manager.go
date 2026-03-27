@@ -30,6 +30,7 @@ type Manager struct {
 	defaultModel    string
 	logger          *ChatLogger
 	botVersion      string
+	guildID         string
 }
 
 // ManagerConfig holds configuration for creating a Manager.
@@ -43,6 +44,7 @@ type ManagerConfig struct {
 	DefaultModel    string
 	DataDir         string
 	BotVersion      string
+	GuildID         string
 }
 
 func NewManager(cfg ManagerConfig) *Manager {
@@ -59,6 +61,7 @@ func NewManager(cfg ManagerConfig) *Manager {
 		defaultModel:    cfg.DefaultModel,
 		logger:          NewChatLogger(cfg.DataDir),
 		botVersion:      cfg.BotVersion,
+		guildID:         cfg.GuildID,
 	}
 }
 
@@ -120,7 +123,7 @@ func (m *Manager) Reset(channelID string) error {
 	m.stopChannel(channelID)
 
 	if sess != nil {
-		if err := m.store.Set(channelID, &Session{CWD: sess.CWD, Model: sess.Model}); err != nil {
+		if err := m.store.Set(channelID, &Session{CWD: sess.CWD, Model: sess.Model, GuildID: sess.GuildID}); err != nil {
 			log.Printf("[manager] save session on reset: %v", err)
 		}
 	}
@@ -136,7 +139,7 @@ func (m *Manager) Restart(channelID string) error {
 	m.stopChannel(channelID)
 
 	if sess != nil {
-		if err := m.store.Set(channelID, &Session{CWD: sess.CWD, Model: sess.Model}); err != nil {
+		if err := m.store.Set(channelID, &Session{CWD: sess.CWD, Model: sess.Model, GuildID: sess.GuildID}); err != nil {
 			log.Printf("[manager] save session on restart: %v", err)
 		}
 	}
@@ -352,6 +355,7 @@ func (m *Manager) startAgentAndWorker(channelID string) (*Worker, error) {
 		SessionID: agent.SessionID,
 		CWD:       cwd,
 		Model:     model,
+		GuildID:   m.guildID,
 	}); err != nil {
 		log.Printf("[manager] save session: %v", err)
 	}
@@ -382,7 +386,7 @@ func (m *Manager) ActiveSessions() []struct{ ChannelID, AgentName string } {
 	var out []struct{ ChannelID, AgentName string }
 	for chID := range m.agents {
 		sess, ok := m.store.Get(chID)
-		if ok && sess.AgentName != "" {
+		if ok && sess.AgentName != "" && (m.guildID == "" || sess.GuildID == m.guildID) {
 			out = append(out, struct{ ChannelID, AgentName string }{chID, sess.AgentName})
 		}
 	}

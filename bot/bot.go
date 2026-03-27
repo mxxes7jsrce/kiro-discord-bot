@@ -67,6 +67,7 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 		DefaultModel:    cfg.KiroModel,
 		DataDir:         cfg.DataDir,
 		BotVersion:      cfg.BotVersion,
+		GuildID:         cfg.GuildID,
 	})
 
 	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID, dataDir: cfg.DataDir, cronTimezone: cfg.CronTimezone, version: cfg.BotVersion,
