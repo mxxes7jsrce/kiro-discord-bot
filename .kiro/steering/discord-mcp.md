@@ -17,4 +17,7 @@ description: Discord MCP server that gives this agent the ability to interact wi
 
 ## 使用方式
 
-每則訊息的 prompt 開頭帶有 `[Discord context] channel_id=... guild_id=...`，直接用這些 ID 呼叫 discord_* tools。
+每則訊息的 prompt 開頭帶有 `[Discord context] channel_id=... thread_id=... guild_id=...`。
+
+- 如果有 `thread_id`，**優先使用 thread_id 作為 channel_id** 來呼叫 discord_* tools（發訊息、回覆等），讓回應集中在討論串中。
+- 如果沒有 `thread_id`，使用 `channel_id`。

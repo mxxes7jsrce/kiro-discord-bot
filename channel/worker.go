@@ -285,7 +285,10 @@ func (w *Worker) execute(job *Job) {
 		w.signalIdle()
 	})
 
-	w.agent.AskAsync(job.Prompt, callbacks)
+	// Inject thread ID into prompt so agent can post directly to thread via MCP
+	prompt := strings.Replace(job.Prompt, "channel_id="+job.ChannelID, "channel_id="+job.ChannelID+" thread_id="+threadID, 1)
+
+	w.agent.AskAsync(prompt, callbacks)
 	// Returns immediately — callbacks handle the rest
 }
 
