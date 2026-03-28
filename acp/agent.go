@@ -22,11 +22,13 @@ type Agent struct {
 	transport *Transport
 	state     string // starting, idle, working, stopped
 
-	mu          sync.Mutex
-	currentText strings.Builder
-	onChunk     func(string)
-	onToolUse   func(bool) // called with true on tool_use start, false on end
-	onExit      func()     // called when child process exits unexpectedly
+	mu           sync.Mutex
+	currentText  strings.Builder
+	onChunk      func(string)
+	onToolUse    func(bool)          // legacy: called with true on tool_use start, false on end
+	onToolCall   func(ToolCallEvent) // called on tool_call notification
+	onToolResult func(ToolCallEvent) // called on tool_call_update notification
+	onExit       func()              // called when child process exits unexpectedly
 
 	initResult *InitializeResult
 	stopOnce   sync.Once
@@ -141,7 +143,7 @@ func StartAgent(name, kiroCLI, cwd, model string) (*Agent, error) {
 }
 
 func (a *Agent) handleNotification(method string, params json.RawMessage) {
-	if method != NotifUpdate {
+	if method != NotifUpdate && method != NotifUpdateKiro {
 		return
 	}
 	var notif struct {
@@ -151,6 +153,12 @@ func (a *Agent) handleNotification(method string, params json.RawMessage) {
 				Type string `json:"type"`
 				Text string `json:"text"`
 			} `json:"content,omitempty"`
+			ToolCallID string                 `json:"toolCallId,omitempty"`
+			Title      string                 `json:"title,omitempty"`
+			Kind       string                 `json:"kind,omitempty"`
+			Status     string                 `json:"status,omitempty"`
+			RawInput   map[string]interface{} `json:"rawInput,omitempty"`
+			RawOutput  interface{}            `json:"rawOutput,omitempty"`
 		} `json:"update"`
 	}
 	if json.Unmarshal(params, &notif) != nil {
@@ -158,7 +166,7 @@ func (a *Agent) handleNotification(method string, params json.RawMessage) {
 	}
 
 	switch notif.Update.SessionUpdate {
-	case "agent_message_chunk":
+	case UpdateAgentChunk:
 		if notif.Update.Content == nil || notif.Update.Content.Text == "" {
 			return
 		}
@@ -169,6 +177,54 @@ func (a *Agent) handleNotification(method string, params json.RawMessage) {
 		if cb != nil {
 			cb(notif.Update.Content.Text)
 		}
+
+	case UpdateToolCall:
+		evt := ToolCallEvent{
+			ToolCallID: notif.Update.ToolCallID,
+			Title:      notif.Update.Title,
+			Kind:       notif.Update.Kind,
+			RawInput:   notif.Update.RawInput,
+		}
+		a.mu.Lock()
+		cb := a.onToolCall
+		cbLegacy := a.onToolUse
+		a.mu.Unlock()
+		if cb != nil {
+			cb(evt)
+		}
+		if cbLegacy != nil {
+			cbLegacy(true)
+		}
+
+	case UpdateToolCallUpdate:
+		rawOut := ""
+		if notif.Update.RawOutput != nil {
+			if b, err := json.Marshal(notif.Update.RawOutput); err == nil {
+				rawOut = string(b)
+				if len(rawOut) > 500 {
+					rawOut = rawOut[:500] + "..."
+				}
+			}
+		}
+		evt := ToolCallEvent{
+			ToolCallID: notif.Update.ToolCallID,
+			Title:      notif.Update.Title,
+			Kind:       notif.Update.Kind,
+			Status:     notif.Update.Status,
+			RawInput:   notif.Update.RawInput,
+			RawOutput:  rawOut,
+		}
+		a.mu.Lock()
+		cb := a.onToolResult
+		cbLegacy := a.onToolUse
+		a.mu.Unlock()
+		if cb != nil {
+			cb(evt)
+		}
+		if cbLegacy != nil {
+			cbLegacy(false)
+		}
+
 	case "tool_use_start":
 		a.mu.Lock()
 		cb := a.onToolUse
@@ -215,6 +271,20 @@ func (a *Agent) OnExitFunc(fn func()) {
 func (a *Agent) OnToolUseFunc(fn func(bool)) {
 	a.mu.Lock()
 	a.onToolUse = fn
+	a.mu.Unlock()
+}
+
+// OnToolCallFunc sets a callback invoked on tool_call notifications with full detail.
+func (a *Agent) OnToolCallFunc(fn func(ToolCallEvent)) {
+	a.mu.Lock()
+	a.onToolCall = fn
+	a.mu.Unlock()
+}
+
+// OnToolResultFunc sets a callback invoked on tool_call_update notifications with result.
+func (a *Agent) OnToolResultFunc(fn func(ToolCallEvent)) {
+	a.mu.Lock()
+	a.onToolResult = fn
 	a.mu.Unlock()
 }
 
