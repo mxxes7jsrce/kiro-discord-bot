@@ -97,5 +97,6 @@
   "cron.btn.edit": "✏️ 編輯",
   "cron.updated": "✅ 任務已更新\n名稱：**%s**\nCron：`%s` → %s\nPrompt：%s",
   "compact.success": "已壓縮對話歷史。",
-  "clear.success": "已清除對話歷史。"
+  "clear.success": "已清除對話歷史。",
+  "context.usage_warning": "Context 使用率: %.0f%% — 建議使用 `!compact` 或 `!clear`"
 }

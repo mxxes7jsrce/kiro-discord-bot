@@ -257,7 +257,7 @@ func (w *Worker) execute(job *Job) {
 
 			// Warn if context usage is high
 			if usage := w.agent.ContextUsage(); usage >= 90 {
-				ds.ChannelMessageSend(threadID, fmt.Sprintf("⚠️ Context usage: %.0f%% — consider `!compact` or `!clear`", usage))
+				ds.ChannelMessageSend(threadID, "⚠️ "+L.Getf("context.usage_warning", usage))
 			}
 
 			w.signalIdle()
