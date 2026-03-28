@@ -248,16 +248,18 @@ func (w *Worker) execute(job *Job) {
 
 			// Post full response in thread
 			sendLongThread(ds, threadID, response)
-			// Brief completion notice in main channel
-			ds.ChannelMessageSendReply(job.ChannelID, "✅", &discordgo.MessageReference{
-				MessageID: job.MessageID, ChannelID: job.ChannelID,
-			})
 			swapReaction(ds, job.ChannelID, job.MessageID, "🔄", "✅")
 			swapReaction(ds, job.ChannelID, job.MessageID, "⚙️", "✅")
 
 			if w.logger != nil {
 				w.logger.Log(w.channelID, ChatEntry{Role: "assistant", Content: response, Model: w.model})
 			}
+
+			// Warn if context usage is high
+			if usage := w.agent.ContextUsage(); usage >= 90 {
+				ds.ChannelMessageSend(threadID, fmt.Sprintf("⚠️ Context usage: %.0f%% — consider `!compact` or `!clear`", usage))
+			}
+
 			w.signalIdle()
 		},
 	}
