@@ -27,6 +27,7 @@ type Manager struct {
 	queueBufSize    int
 	askTimeoutSec   int
 	streamUpdateSec int
+	threadArchive   int
 	defaultModel    string
 	logger          *ChatLogger
 	botVersion      string
@@ -41,6 +42,7 @@ type ManagerConfig struct {
 	QueueBufSize    int
 	AskTimeoutSec   int
 	StreamUpdateSec int
+	ThreadArchive   int
 	DefaultModel    string
 	DataDir         string
 	BotVersion      string
@@ -58,6 +60,7 @@ func NewManager(cfg ManagerConfig) *Manager {
 		queueBufSize:    cfg.QueueBufSize,
 		askTimeoutSec:   cfg.AskTimeoutSec,
 		streamUpdateSec: cfg.StreamUpdateSec,
+		threadArchive:   cfg.ThreadArchive,
 		defaultModel:    cfg.DefaultModel,
 		logger:          NewChatLogger(cfg.DataDir),
 		botVersion:      cfg.BotVersion,
@@ -360,7 +363,7 @@ func (m *Manager) startAgentAndWorker(channelID string) (*Worker, error) {
 		log.Printf("[manager] save session: %v", err)
 	}
 
-	w := NewWorker(channelID, agent, m.queueBufSize, m.askTimeoutSec, m.streamUpdateSec, m.logger, model)
+	w := NewWorker(channelID, agent, m.queueBufSize, m.askTimeoutSec, m.streamUpdateSec, m.threadArchive, m.logger, model)
 	w.Start()
 	m.workers[channelID] = w
 	return w, nil

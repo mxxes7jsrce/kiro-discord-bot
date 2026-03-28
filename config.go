@@ -21,6 +21,7 @@ type Config struct {
 	CronTimezone       string
 	BotLocale          string
 	DownloadTimeoutSec int
+	ThreadAutoArchive  int
 }
 
 func loadConfig() *Config {
@@ -28,7 +29,7 @@ func loadConfig() *Config {
 		DiscordToken:    mustEnv("DISCORD_TOKEN"),
 		KiroCLIPath:     envOr("KIRO_CLI_PATH", "kiro-cli"),
 		DefaultCWD:      envOr("DEFAULT_CWD", "/projects"),
-		AskTimeoutSec:   envInt("ASK_TIMEOUT_SEC", 300),
+		AskTimeoutSec:   envInt("ASK_TIMEOUT_SEC", 3600),
 		QueueBufferSize: envInt("QUEUE_BUFFER_SIZE", 20),
 		DataDir:         envOr("DATA_DIR", "./data"),
 		StreamUpdateSec: envInt("STREAM_UPDATE_SEC", 3),
@@ -39,6 +40,7 @@ func loadConfig() *Config {
 		CronTimezone:       envOr("CRON_TIMEZONE", ""),
 		BotLocale:          envOr("BOT_LOCALE", "en"),
 		DownloadTimeoutSec: envInt("DOWNLOAD_TIMEOUT_SEC", 120),
+		ThreadAutoArchive:  envInt("THREAD_AUTO_ARCHIVE", 1440),
 	}
 }
 

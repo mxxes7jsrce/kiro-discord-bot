@@ -42,6 +42,7 @@ type BotConfig struct {
 	QueueBufferSize    int
 	AskTimeoutSec      int
 	StreamUpdateSec    int
+	ThreadAutoArchive  int
 	GuildID            string
 	KiroModel          string
 	HeartbeatSec       int
@@ -70,6 +71,7 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 		QueueBufSize:    cfg.QueueBufferSize,
 		AskTimeoutSec:   cfg.AskTimeoutSec,
 		StreamUpdateSec: cfg.StreamUpdateSec,
+		ThreadArchive:   cfg.ThreadAutoArchive,
 		DefaultModel:    cfg.KiroModel,
 		DataDir:         cfg.DataDir,
 		BotVersion:      cfg.BotVersion,

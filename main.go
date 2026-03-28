@@ -32,6 +32,7 @@ func main() {
 		QueueBufferSize: cfg.QueueBufferSize,
 		AskTimeoutSec:   cfg.AskTimeoutSec,
 		StreamUpdateSec: cfg.StreamUpdateSec,
+		ThreadAutoArchive:  cfg.ThreadAutoArchive,
 		GuildID:         cfg.DiscordGuildID,
 		KiroModel:       cfg.KiroModel,
 		HeartbeatSec:    cfg.HeartbeatSec,
