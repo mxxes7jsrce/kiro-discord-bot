@@ -193,7 +193,7 @@ func (w *Worker) execute(job *Job) {
 	w.cancelMu.Unlock()
 
 	// Post initial status in thread
-	ds.ChannelMessageSend(threadID, "🔄 "+L.Get("worker.processing"))
+	ds.ChannelMessageSend(threadID, L.Get("worker.processing"))
 
 	// Setup timeout context as safety net
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(w.askTimeoutSec)*time.Second)
