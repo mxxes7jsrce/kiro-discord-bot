@@ -156,8 +156,8 @@ The bot needs explicit permission in each channel it should respond to:
 | `/cron-list` | List scheduled tasks with action buttons |
 | `/cron-run <name>` | Manually run a scheduled task |
 | `/remind <time> <content>` | Set a one-time reminder (tags you when due) |
-| `!compact` | Compress conversation history to free context |
-| `!clear` | Clear conversation history |
+| `/compact` | Compress conversation history to free context |
+| `/clear` | Clear conversation history |
 
 All commands also work with `!` prefix (e.g. `!status`, `!reset`).
 
@@ -395,8 +395,8 @@ chmod +x start.sh && ./start.sh
 | `/cron-list` | 列出排程任務（含操作按鈕） |
 | `/cron-run <name>` | 手動執行排程任務 |
 | `/remind <時間> <內容>` | 預約單次提醒（到期時 tag 你） |
-| `!compact` | 壓縮對話歷史以釋放 context |
-| `!clear` | 清除對話歷史 |
+| `/compact` | 壓縮對話歷史以釋放 context |
+| `/clear` | 清除對話歷史 |
 
 所有指令也支援 `!` 前綴（如 `!status`、`!reset`）。
 

@@ -255,6 +255,8 @@ func buildSlashCommands() []*discordgo.ApplicationCommand {
 		{Name: "models", Description: L.Get("cmd.models.desc")},
 		{Name: "cron", Description: L.Get("cmd.cron.desc")},
 		{Name: "cron-list", Description: L.Get("cmd.cron_list.desc")},
+		{Name: "compact", Description: L.Get("cmd.compact.desc")},
+		{Name: "clear", Description: L.Get("cmd.clear.desc")},
 		{Name: "cron-run", Description: L.Get("cmd.cron_run.desc"), Options: []*discordgo.ApplicationCommandOption{
 			{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: L.Get("cmd.cron_run.opt.name"), Required: true},
 		}},
@@ -367,6 +369,26 @@ func (b *Bot) handleSlashCommand(ds *discordgo.Session, i *discordgo.Interaction
 				reply(L.Getf("error.generic", err.Error()))
 			} else {
 				reply(L.Get("cancel.success"))
+			}
+		case "compact":
+			resp, err := b.manager.SendCommand(channelID, "/compact")
+			if err != nil {
+				reply(L.Getf("error.generic", err.Error()))
+			} else {
+				if resp == "" {
+					resp = L.Get("compact.success")
+				}
+				reply("✅ " + resp)
+			}
+		case "clear":
+			resp, err := b.manager.SendCommand(channelID, "/clear")
+			if err != nil {
+				reply(L.Getf("error.generic", err.Error()))
+			} else {
+				if resp == "" {
+					resp = L.Get("clear.success")
+				}
+				reply("✅ " + resp)
 			}
 		case "cwd":
 			if len(data.Options) > 0 {

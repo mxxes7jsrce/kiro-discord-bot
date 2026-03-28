@@ -105,5 +105,7 @@
   "cron.updated": "✅ Task updated\nName: **%s**\nCron: `%s` → %s\nPrompt: %s",
   "compact.success": "Context compacted.",
   "clear.success": "Conversation cleared.",
-  "context.usage_warning": "Context usage: %.0f%% — consider `!compact` or `!clear`"
+  "context.usage_warning": "Context usage: %.0f%% — consider `!compact` or `!clear`",
+  "cmd.compact.desc": "Compress conversation history to free context",
+  "cmd.clear.desc": "Clear conversation history"
 }

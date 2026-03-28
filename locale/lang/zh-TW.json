@@ -98,5 +98,7 @@
   "cron.updated": "✅ 任務已更新\n名稱：**%s**\nCron：`%s` → %s\nPrompt：%s",
   "compact.success": "已壓縮對話歷史。",
   "clear.success": "已清除對話歷史。",
-  "context.usage_warning": "Context 使用率: %.0f%% — 建議使用 `!compact` 或 `!clear`"
+  "context.usage_warning": "Context 使用率: %.0f%% — 建議使用 `!compact` 或 `!clear`",
+  "cmd.compact.desc": "壓縮對話歷史以釋放 context",
+  "cmd.clear.desc": "清除對話歷史"
 }
