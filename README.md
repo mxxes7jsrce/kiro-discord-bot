@@ -310,6 +310,9 @@ The agent will read the guide, build the binary, update `mcp.json`, and prompt y
 | `discord_list_members` | List members of a guild |
 | `discord_search_messages` | Search recent messages by keyword |
 | `discord_channel_info` | Get detailed info about a channel |
+| `discord_send_file` | Upload a local file to a channel as an attachment |
+| `discord_list_attachments` | List file attachments from recent messages |
+| `discord_download_attachment` | Download a Discord attachment to a local file |
 
 ---
 
@@ -441,3 +444,6 @@ Agent 會自動讀取說明、編譯、更新 mcp.json，並提示你重啟。
 | `discord_list_members` | 列出伺服器成員 |
 | `discord_search_messages` | 在頻道中搜尋關鍵字 |
 | `discord_channel_info` | 取得頻道詳細資訊 |
+| `discord_send_file` | 上傳本地檔案到頻道作為附件 |
+| `discord_list_attachments` | 列出頻道近期訊息中的附件 |
+| `discord_download_attachment` | 下載 Discord 附件到本地 |

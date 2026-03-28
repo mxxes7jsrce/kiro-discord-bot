@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -247,6 +250,139 @@ func main() {
 			info := fmt.Sprintf("name: #%s\nid: %s\ntype: %d\ntopic: %s\nguild_id: %s",
 				ch.Name, ch.ID, ch.Type, topic, ch.GuildID)
 			return mcp.NewToolResultText(info), nil
+		},
+	)
+
+	// 9. Send file
+	s.AddTool(
+		mcp.NewTool("discord_send_file",
+			mcp.WithDescription("Upload a local file to a channel as an attachment"),
+			mcp.WithString("channel_id", mcp.Required(), mcp.Description("Channel ID")),
+			mcp.WithString("file_path", mcp.Required(), mcp.Description("Absolute path to the local file")),
+			mcp.WithString("content", mcp.Description("Optional text message to send with the file")),
+		),
+		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			if err := ensureDiscord(); err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			chID, _ := req.RequireString("channel_id")
+			filePath, _ := req.RequireString("file_path")
+			content := req.GetString("content", "")
+
+			f, err := os.Open(filePath)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("open file: %v", err)), nil
+			}
+			defer f.Close()
+
+			info, err := f.Stat()
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("stat file: %v", err)), nil
+			}
+			if info.Size() > 25*1024*1024 {
+				return mcp.NewToolResultError("file exceeds 25MB Discord limit"), nil
+			}
+
+			msg, err := dg.ChannelMessageSendComplex(chID, &discordgo.MessageSend{
+				Content: content,
+				Files: []*discordgo.File{{
+					Name:   filepath.Base(filePath),
+					Reader: f,
+				}},
+			})
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			var urls []string
+			for _, a := range msg.Attachments {
+				urls = append(urls, a.URL)
+			}
+			return mcp.NewToolResultText(fmt.Sprintf("Sent message %s\n%s", msg.ID, strings.Join(urls, "\n"))), nil
+		},
+	)
+
+	// 10. List attachments
+	s.AddTool(
+		mcp.NewTool("discord_list_attachments",
+			mcp.WithDescription("List file attachments from recent messages in a channel"),
+			mcp.WithString("channel_id", mcp.Required(), mcp.Description("Channel ID")),
+			mcp.WithNumber("limit", mcp.Description("Messages to scan, default 50, max 100")),
+		),
+		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			if err := ensureDiscord(); err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			chID, _ := req.RequireString("channel_id")
+			limit := int(req.GetFloat("limit", 50))
+			if limit > 100 {
+				limit = 100
+			}
+			msgs, err := dg.ChannelMessages(chID, limit, "", "", "")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			var lines []string
+			for i := len(msgs) - 1; i >= 0; i-- {
+				m := msgs[i]
+				for _, a := range m.Attachments {
+					t := time.Time(m.Timestamp).Format(time.RFC3339)
+					lines = append(lines, fmt.Sprintf("[%s] %s | %s | %d bytes | msg:%s | %s",
+						t, a.Filename, a.ContentType, a.Size, m.ID, a.URL))
+				}
+			}
+			if len(lines) == 0 {
+				return mcp.NewToolResultText("No attachments found."), nil
+			}
+			return mcp.NewToolResultText(strings.Join(lines, "\n")), nil
+		},
+	)
+
+	// 11. Download attachment
+	s.AddTool(
+		mcp.NewTool("discord_download_attachment",
+			mcp.WithDescription("Download a Discord attachment to a local file"),
+			mcp.WithString("url", mcp.Required(), mcp.Description("Attachment URL (from discord_list_attachments)")),
+			mcp.WithString("save_dir", mcp.Description("Directory to save the file (default: system temp dir)")),
+		),
+		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			if err := ensureDiscord(); err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			url, _ := req.RequireString("url")
+			saveDir := req.GetString("save_dir", os.TempDir())
+
+			if err := os.MkdirAll(saveDir, 0755); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("create dir: %v", err)), nil
+			}
+
+			resp, err := http.Get(url)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("download: %v", err)), nil
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				return mcp.NewToolResultError(fmt.Sprintf("download: HTTP %d", resp.StatusCode)), nil
+			}
+
+			// Extract filename from URL path
+			name := filepath.Base(url)
+			if idx := strings.Index(name, "?"); idx > 0 {
+				name = name[:idx]
+			}
+			ts := time.Now().Format("20060102-150405")
+			dst := filepath.Join(saveDir, ts+"-"+name)
+
+			f, err := os.Create(dst)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("create file: %v", err)), nil
+			}
+			n, err := io.Copy(f, resp.Body)
+			f.Close()
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("write file: %v", err)), nil
+			}
+			abs, _ := filepath.Abs(dst)
+			return mcp.NewToolResultText(fmt.Sprintf("Saved %s (%d bytes)", abs, n)), nil
 		},
 	)
 
