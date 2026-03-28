@@ -417,6 +417,19 @@ func (m *Manager) StartTempAgent(name, cwd, model string) (*acp.Agent, error) {
 	return acp.StartAgent(name, m.kiroCLI, cwd, model)
 }
 
+// SendCommand sends a slash command (e.g. /compact, /clear) to the channel's agent.
+func (m *Manager) SendCommand(channelID, command string) (string, error) {
+	m.mu.Lock()
+	agent, ok := m.agents[channelID]
+	m.mu.Unlock()
+	if !ok {
+		return "", fmt.Errorf("no agent")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return agent.Ask(ctx, command, nil)
+}
+
 // StopTempAgent stops a temporary agent.
 func (m *Manager) StopTempAgent(agent *acp.Agent) {
 	agent.Stop()
