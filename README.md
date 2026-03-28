@@ -353,7 +353,6 @@ The agent will read the guide, build the binary, update `mcp.json`, and prompt y
 ### 前置需求
 
 - Go 1.21+
-- Go 1.21+
 - 已安裝並登入 [kiro-cli](https://cli.kiro.dev/install)
 - Discord bot token，需具備：
   - Scopes：`bot`、`applications.commands`
