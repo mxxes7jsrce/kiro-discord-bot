@@ -1,6 +1,6 @@
 ---
 name: discord-mcp
-description: Discord MCP server that gives this agent the ability to interact with Discord channels. If the discord_* tools are not available, read INSTALL_MCP.md and follow the steps to install.
+description: Use when the task requires reading, sending, searching, or managing Discord messages and channels directly via discord_* tools. If the discord_* tools are not available, read INSTALL_MCP.md and follow the steps to install.
 ---
 
 # Discord MCP Server
