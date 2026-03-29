@@ -265,6 +265,22 @@ This project includes a built-in Discord MCP Server (`cmd/mcp-discord/`) that gi
 
 Once enabled, the agent can proactively interact with Discord instead of only responding to forwarded messages.
 
+### Additional Permissions for MCP
+
+The MCP server uses Discord REST APIs beyond what the base bot needs. Before enabling, add these to your bot:
+
+**Extra Bot Permissions:**
+- Attach Files — `discord_send_file`
+- Embed Links — `discord_send_embed`
+- Manage Messages — `discord_delete_message`, `discord_pin_message`, `discord_remove_reaction`
+- Create Public Threads — `discord_create_thread`
+- Manage Channels — `discord_edit_channel_topic`
+
+**Extra Privileged Intent:**
+- **Server Members Intent** — required by `discord_list_members`
+
+> Go to [Discord Developer Portal](https://discord.com/developers/applications) → your app → **Bot** tab to enable the intent, and regenerate the OAuth2 invite URL with the additional permissions.
+
 ### Quick Install
 
 ```bash
@@ -411,6 +427,22 @@ chmod +x start.sh && ./start.sh
 ### 選配：Discord MCP Server
 
 本專案內建 Discord MCP Server（`cmd/mcp-discord/`），啟用後 kiro agent 可直接操作 Discord——讀訊息、發訊息、列頻道、搜尋、加反應等。
+
+#### MCP 額外權限需求
+
+MCP server 使用的 Discord REST API 超出 bot 本體所需，啟用前請先補上以下權限：
+
+**額外 Bot 權限：**
+- Attach Files — `discord_send_file`
+- Embed Links — `discord_send_embed`
+- Manage Messages — `discord_delete_message`、`discord_pin_message`、`discord_remove_reaction`
+- Create Public Threads — `discord_create_thread`
+- Manage Channels — `discord_edit_channel_topic`
+
+**額外 Privileged Intent：**
+- **Server Members Intent** — `discord_list_members` 需要
+
+> 前往 [Discord Developer Portal](https://discord.com/developers/applications) → 你的應用 → **Bot** 頁籤啟用 intent，並重新產生含額外權限的 OAuth2 邀請連結。
 
 #### 手動安裝
 

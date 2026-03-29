@@ -63,14 +63,29 @@ After completing the steps above, tell the user:
 
 | Tool | Description |
 |------|-------------|
-| `discord_list_channels` | List text channels in a guild (requires guild_id) |
-| `discord_read_messages` | Read recent messages from a channel (requires channel_id) |
+| `discord_list_channels` | List text channels in a guild |
+| `discord_read_messages` | Read recent messages from a channel |
 | `discord_send_message` | Send a message to a channel |
 | `discord_reply_message` | Reply to a specific message |
 | `discord_add_reaction` | Add a reaction emoji to a message |
 | `discord_list_members` | List members of a guild |
 | `discord_search_messages` | Search recent messages by keyword |
 | `discord_channel_info` | Get detailed info about a channel |
+| `discord_send_file` | Upload a local file to a channel as an attachment |
+| `discord_list_attachments` | List file attachments from recent messages |
+| `discord_download_attachment` | Download a Discord attachment to a local file |
+| `discord_edit_message` | Edit a message |
+| `discord_delete_message` | Delete a message |
+| `discord_get_message` | Get a single message by ID |
+| `discord_send_embed` | Send a rich embed message |
+| `discord_pin_message` | Pin or unpin a message |
+| `discord_create_thread` | Create a thread from a message |
+| `discord_list_threads` | List active threads in a guild |
+| `discord_remove_reaction` | Remove a reaction from a message |
+| `discord_get_reactions` | Get users who reacted with a specific emoji |
+| `discord_edit_channel_topic` | Edit a channel's topic |
+| `discord_list_roles` | List roles in a guild |
+| `discord_get_user` | Get info about a specific user |
 
 ## Usage Hint
 
