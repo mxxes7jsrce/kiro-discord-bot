@@ -144,8 +144,23 @@ func (w *Worker) run() {
 	}
 }
 
+func promptSummary(prompt string, maxLen int) string {
+	// Strip Discord context prefix
+	if idx := strings.Index(prompt, "\n\n"); idx > 0 && idx < 120 {
+		prompt = prompt[idx+2:]
+	}
+	if len(prompt) > maxLen {
+		return truncateUTF8(prompt, maxLen-3) + "..."
+	}
+	return prompt
+}
+
 func (w *Worker) execute(job *Job) {
 	ds := job.Session
+	startTime := time.Now()
+
+	log.Printf("[worker %s] job start | user=%s(%s) msg=%s prompt=%q",
+		w.channelID, job.Username, job.UserID, job.MessageID, promptSummary(job.Prompt, 80))
 
 	if w.logger != nil {
 		w.logger.Log(w.channelID, ChatEntry{
@@ -215,6 +230,8 @@ func (w *Worker) execute(job *Job) {
 			swapReaction(ds, job.ChannelID, job.MessageID, "⚙️", "🔄")
 		},
 		OnComplete: func(response string, askErr error) {
+			// Capture ctx state BEFORE cancel() — cancel() sets ctx.Err() to Canceled
+			ctxErr := ctx.Err()
 			cancel() // release timeout context
 
 			w.cancelMu.Lock()
@@ -225,13 +242,15 @@ func (w *Worker) execute(job *Job) {
 			if askErr != nil {
 				errMsg := askErr.Error()
 				emoji := "❌"
-				if ctx.Err() == context.DeadlineExceeded {
+				if ctxErr == context.DeadlineExceeded {
 					errMsg = L.Getf("worker.timeout", w.askTimeoutSec)
 					emoji = "⚠️"
-				} else if ctx.Err() == context.Canceled {
+				} else if ctxErr == context.Canceled {
 					errMsg = L.Get("cancel.success")
 					emoji = "⚠️"
 				}
+				log.Printf("[worker %s] job error | user=%s msg=%s elapsed=%s ctxErr=%v err=%v",
+					w.channelID, job.Username, job.MessageID, time.Since(startTime).Round(time.Millisecond), ctxErr, askErr)
 				ds.ChannelMessageSend(threadID, "❌ "+errMsg)
 				swapReaction(ds, job.ChannelID, job.MessageID, "🔄", emoji)
 				swapReaction(ds, job.ChannelID, job.MessageID, "⚙️", emoji)
@@ -250,6 +269,9 @@ func (w *Worker) execute(job *Job) {
 			sendLongThread(ds, threadID, response)
 			swapReaction(ds, job.ChannelID, job.MessageID, "🔄", "✅")
 			swapReaction(ds, job.ChannelID, job.MessageID, "⚙️", "✅")
+
+			log.Printf("[worker %s] job done | user=%s msg=%s elapsed=%s len=%d",
+				w.channelID, job.Username, job.MessageID, time.Since(startTime).Round(time.Millisecond), len(response))
 
 			if w.logger != nil {
 				w.logger.Log(w.channelID, ChatEntry{Role: "assistant", Content: response, Model: w.model})
@@ -275,6 +297,8 @@ func (w *Worker) execute(job *Job) {
 
 	// Watch for ReadLoop errors (e.g. buffer overflow)
 	w.agent.OnReadErrorFunc(func(err error) {
+		log.Printf("[worker %s] agent read error | user=%s msg=%s elapsed=%s err=%v",
+			w.channelID, job.Username, job.MessageID, time.Since(startTime).Round(time.Millisecond), err)
 		msg := fmt.Sprintf("⚠️ Agent 通訊中斷: %v\n請使用 /reset 重啟", err)
 		ds.ChannelMessageSend(threadID, msg)
 		swapReaction(ds, job.ChannelID, job.MessageID, "🔄", "⚠️")
