@@ -264,6 +264,9 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 		b.handleRemindText(ds, m.ChannelID, m.GuildID, m.Author.ID, m.Author.Username, strings.TrimPrefix(content, "!remind "))
 
 	default:
+		// Immediate feedback
+		_ = ds.MessageReactionAdd(m.ChannelID, m.ID, "⏳")
+
 		// Download attachments if any
 		localPaths := b.downloadAttachments(m.ChannelID, m.Attachments)
 		prompt := buildPrompt(content, localPaths, m.ChannelID, m.GuildID)
@@ -277,6 +280,7 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 			Attachments: localPaths,
 		}
 		if err := b.manager.Enqueue(ds, job); err != nil {
+			ds.MessageReactionRemove(m.ChannelID, m.ID, "⏳", "@me")
 			ds.ChannelMessageSend(m.ChannelID, L.Getf("error.generic", err.Error()))
 		}
 	}
@@ -311,6 +315,9 @@ func (b *Bot) handleThreadMessage(ds *discordgo.Session, m *discordgo.MessageCre
 		return
 	}
 
+	// Immediate feedback
+	_ = ds.MessageReactionAdd(threadID, m.ID, "⏳")
+
 	// Build prompt and enqueue to thread agent
 	localPaths := b.downloadAttachments(threadID, m.Attachments)
 	prompt := buildPrompt(content, localPaths, parentChannelID, m.GuildID)
@@ -325,6 +332,7 @@ func (b *Bot) handleThreadMessage(ds *discordgo.Session, m *discordgo.MessageCre
 		ThreadID:    threadID,
 	}
 	if err := b.manager.EnqueueThread(ds, job, parentChannelID); err != nil {
+		ds.MessageReactionRemove(threadID, m.ID, "⏳", "@me")
 		ds.ChannelMessageSend(threadID, L.Getf("error.generic", err.Error()))
 	}
 }
