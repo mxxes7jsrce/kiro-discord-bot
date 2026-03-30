@@ -165,6 +165,13 @@ The bot needs explicit permission in each channel it should respond to:
 
 All commands also work with `!` prefix (e.g. `!status`, `!reset`).
 
+**Thread-only commands** (inside a thread):
+
+| Command | Description |
+|---------|-------------|
+| `!close` | Close the thread agent |
+| `!cancel` | Cancel the thread agent's current task |
+
 ### Sending Tasks
 
 **Full-listen mode (default):** Any message in the channel is sent to the agent.
@@ -202,11 +209,13 @@ Discord Bot (Go)
     ├── per-channel SessionStore   { agentName, sessionId, cwd }
     ├── per-channel JobQueue       buffered chan, FIFO
     ├── per-channel Worker         goroutine, async thread-based execution
+    ├── per-thread Agent (on demand) isolated context, auto-cleanup on idle/archive
     ├── per-channel ChatLogger     JSONL conversation log
     └── Heartbeat                  background maintenance loop
           ├── HealthTask           agent liveness check + auto-restart
           ├── CleanupTask          expired attachment removal
-          └── CronTask             scheduled jobs + one-shot reminders
+          ├── CronTask             scheduled jobs + one-shot reminders
+          └── ThreadCleanupTask    idle thread agent eviction
                 │
                 ▼
           Temp Agent (per job)     isolated context, auto-cleanup
@@ -232,7 +241,8 @@ kiro-discord-bot/
 │   ├── handler.go        message routing, slash command handlers
 │   ├── handler_cron.go   /cron Modal + /cron-list Button + /remind handlers
 │   ├── health_adapter.go heartbeat ↔ manager bridge
-│   └── cron_adapter.go   cron task ↔ manager bridge
+│   ├── cron_adapter.go   cron task ↔ manager bridge
+│   └── thread_cleanup_adapter.go  thread cleanup ↔ manager bridge
 ├── channel/
 │   ├── manager.go        per-channel session + worker lifecycle
 │   ├── session.go        session struct + JSON persistence
@@ -245,7 +255,8 @@ kiro-discord-bot/
 │   ├── cleanup.go        expired attachment removal
 │   ├── cron.go           cron scheduler + temp agent execution
 │   ├── cron_store.go     cron job persistence (JSON)
-│   └── schedule.go       natural language → cron/time parser
+│   ├── schedule.go       natural language → cron/time parser
+│   └── thread_cleanup.go idle thread agent eviction
 ├── acp/
 │   ├── agent.go          ACP agent process management (spawn, handshake, ask, stop)
 │   ├── jsonrpc.go        JSON-RPC 2.0 ndjson transport
@@ -421,12 +432,20 @@ chmod +x start.sh && ./start.sh
 
 所有指令也支援 `!` 前綴（如 `!status`、`!reset`）。
 
+**討論串專用指令**（在 thread 中使用）：
+
+| 指令 | 說明 |
+|------|------|
+| `!close` | 關閉討論串 agent |
+| `!cancel` | 取消討論串 agent 目前的任務 |
+
 ### 注意事項
 
 - Bot 需要在各 channel 的權限設定中明確授予讀寫權限
 - Session 在 agent process 存活期間持續，bot 重啟後建立新 session
 - MCP 設定自動繼承 `~/.kiro/settings/mcp.json`
 - 回應被截斷時可用 `!resume` 補完
+- **討論串互動**：在 bot 建立的 thread 中發訊息，會自動啟動獨立的 thread agent 接續討論。閒置超過 `THREAD_AGENT_IDLE_SEC` 或 thread 歸檔時自動關閉，再次發訊息可重新啟動
 
 ---
 
