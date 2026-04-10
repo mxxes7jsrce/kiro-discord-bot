@@ -163,9 +163,10 @@ func StartAgent(name, kiroCLI, cwd, model string, opts AgentOptions) (*Agent, er
 	}
 	log.Printf("[agent:%s] pid=%d protocol=%v kiro=%s", name, cmd.Process.Pid, initResp.ProtocolVersion, version)
 
-	// Handshake: session/new — omit mcpServers so kiro-cli loads its own config
+	// Handshake: session/new — pass empty mcpServers so kiro-cli loads from its own config
 	sessRaw, err := a.transport.Send(MethodNewSession, map[string]interface{}{
-		"cwd": cwd,
+		"cwd":        cwd,
+		"mcpServers": []interface{}{},
 	})
 	if err != nil {
 		a.Kill()
