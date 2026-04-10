@@ -41,7 +41,6 @@ type Manager struct {
 	agentProfile       string // --agent flag
 	trustAllTools      bool   // --trust-all-tools
 	trustTools         string // --trust-tools <names>
-	mcpConfigPath      string
 }
 
 // threadAgentEntry tracks a per-thread agent and its metadata.
@@ -72,7 +71,6 @@ type ManagerConfig struct {
 	AgentProfile       string
 	TrustAllTools      bool
 	TrustTools         string
-	MCPConfigPath      string
 }
 
 func NewManager(cfg ManagerConfig) *Manager {
@@ -98,7 +96,6 @@ func NewManager(cfg ManagerConfig) *Manager {
 		agentProfile:       cfg.AgentProfile,
 		trustAllTools:      cfg.TrustAllTools,
 		trustTools:         cfg.TrustTools,
-		mcpConfigPath:      cfg.MCPConfigPath,
 	}
 }
 
@@ -113,7 +110,6 @@ func (m *Manager) agentOpts() acp.AgentOptions {
 		TrustTools:    m.trustTools,
 		BotName:       "kiro-discord-bot",
 		BotVersion:    m.botVersion,
-		MCPConfigPath: m.mcpConfigPath,
 	}
 }
 

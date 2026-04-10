@@ -46,7 +46,6 @@ func main() {
 		AgentProfile:       cfg.AgentProfile,
 		TrustAllTools:      cfg.TrustAllTools,
 		TrustTools:         cfg.TrustTools,
-		MCPConfigPath:      cfg.MCPConfigPath,
 	})
 	if err != nil {
 		log.Fatal(err)

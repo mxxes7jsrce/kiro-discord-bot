@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -47,8 +46,6 @@ type AgentOptions struct {
 	TrustTools    string // --trust-tools <names>; comma-separated, overrides TrustAllTools
 	BotName       string // clientInfo.name
 	BotVersion    string // clientInfo.version
-	MCPConfigPath string // custom mcp.json path; empty = read from ~/.kiro + <cwd>/.kiro
-	SkipMCP       bool   // pass empty mcpServers (for preflight)
 }
 
 // StartAgent spawns kiro-cli acp and performs the ACP handshake (initialize + session/new).
@@ -166,14 +163,11 @@ func StartAgent(name, kiroCLI, cwd, model string, opts AgentOptions) (*Agent, er
 	}
 	log.Printf("[agent:%s] pid=%d protocol=%v kiro=%s", name, cmd.Process.Pid, initResp.ProtocolVersion, version)
 
-	// Handshake: session/new
-	var mcpServers interface{} = loadMCPServers(cwd, opts.MCPConfigPath)
-	if opts.SkipMCP {
-		mcpServers = []interface{}{}
-	}
+	// Handshake: session/new — pass empty mcpServers; kiro-cli loads from
+	// <cwd>/.kiro/settings/mcp.json and ~/.kiro/settings/mcp.json on its own.
 	sessRaw, err := a.transport.Send(MethodNewSession, map[string]interface{}{
 		"cwd":        cwd,
-		"mcpServers": mcpServers,
+		"mcpServers": []interface{}{},
 	})
 	if err != nil {
 		a.Kill()
@@ -536,7 +530,7 @@ func (a *Agent) Kill() {
 
 // PreflightCheck validates the full ACP lifecycle: spawn → handshake → ask → stop.
 func PreflightCheck(kiroCLI string) error {
-	agent, err := StartAgent("preflight", kiroCLI, "/tmp", "", AgentOptions{TrustAllTools: true, SkipMCP: true})
+	agent, err := StartAgent("preflight", kiroCLI, "/tmp", "", AgentOptions{TrustAllTools: true})
 	if err != nil {
 		return fmt.Errorf("handshake failed: %w", err)
 	}
@@ -558,46 +552,3 @@ func PreflightCheck(kiroCLI string) error {
 }
 
 
-// loadMCPServers reads MCP config and converts to ACP array format.
-// Priority: customPath > <cwd>/.kiro/settings/mcp.json > ~/.kiro/settings/mcp.json
-// Returns empty slice if no config found.
-func loadMCPServers(cwd, customPath string) []interface{} {
-	merged := make(map[string]map[string]interface{})
-
-	// 1. Global: ~/.kiro/settings/mcp.json
-	if home, err := os.UserHomeDir(); err == nil {
-		readMCPFile(filepath.Join(home, ".kiro", "settings", "mcp.json"), merged)
-	}
-
-	// 2. Project: <cwd>/.kiro/settings/mcp.json (overrides global)
-	readMCPFile(filepath.Join(cwd, ".kiro", "settings", "mcp.json"), merged)
-
-	// 3. Custom path (overrides all)
-	if customPath != "" {
-		readMCPFile(customPath, merged)
-	}
-
-	// Convert to ACP array format: [{name, command, args, env}, ...]
-	servers := make([]interface{}, 0, len(merged))
-	for name, cfg := range merged {
-		cfg["name"] = name
-		servers = append(servers, cfg)
-	}
-	return servers
-}
-
-func readMCPFile(path string, dest map[string]map[string]interface{}) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return
-	}
-	var cfg struct {
-		MCPServers map[string]map[string]interface{} `json:"mcpServers"`
-	}
-	if json.Unmarshal(data, &cfg) != nil {
-		return
-	}
-	for k, v := range cfg.MCPServers {
-		dest[k] = v
-	}
-}
