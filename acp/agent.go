@@ -28,6 +28,7 @@ type Agent struct {
 	onToolUse    func(bool)          // legacy: called with true on tool_use start, false on end
 	onToolCall   func(ToolCallEvent) // called on tool_call notification
 	onToolResult func(ToolCallEvent) // called on tool_call_update notification
+	onThought    func(string)        // called on agent_thought_chunk
 	onExit       func()              // called when child process exits unexpectedly
 	onReadError  func(error)         // called when ReadLoop encounters an error
 
@@ -214,6 +215,7 @@ func (a *Agent) handleNotification(method string, params json.RawMessage) {
 			Status     string                 `json:"status,omitempty"`
 			RawInput   map[string]interface{} `json:"rawInput,omitempty"`
 			RawOutput  interface{}            `json:"rawOutput,omitempty"`
+			Locations  []ToolCallLocation     `json:"locations,omitempty"`
 		} `json:"update"`
 	}
 	if json.Unmarshal(params, &notif) != nil {
@@ -233,12 +235,24 @@ func (a *Agent) handleNotification(method string, params json.RawMessage) {
 			cb(notif.Update.Content.Text)
 		}
 
+	case UpdateAgentThought:
+		if notif.Update.Content == nil || notif.Update.Content.Text == "" {
+			return
+		}
+		a.mu.Lock()
+		cb := a.onThought
+		a.mu.Unlock()
+		if cb != nil {
+			cb(notif.Update.Content.Text)
+		}
+
 	case UpdateToolCall:
 		evt := ToolCallEvent{
 			ToolCallID: notif.Update.ToolCallID,
 			Title:      notif.Update.Title,
 			Kind:       notif.Update.Kind,
 			RawInput:   notif.Update.RawInput,
+			Locations:  notif.Update.Locations,
 		}
 		a.mu.Lock()
 		cb := a.onToolCall
@@ -256,9 +270,6 @@ func (a *Agent) handleNotification(method string, params json.RawMessage) {
 		if notif.Update.RawOutput != nil {
 			if b, err := json.Marshal(notif.Update.RawOutput); err == nil {
 				rawOut = string(b)
-				if len(rawOut) > 500 {
-					rawOut = rawOut[:500] + "..."
-				}
 			}
 		}
 		evt := ToolCallEvent{
@@ -268,6 +279,7 @@ func (a *Agent) handleNotification(method string, params json.RawMessage) {
 			Status:     notif.Update.Status,
 			RawInput:   notif.Update.RawInput,
 			RawOutput:  rawOut,
+			Locations:  notif.Update.Locations,
 		}
 		a.mu.Lock()
 		cb := a.onToolResult
@@ -340,6 +352,13 @@ func (a *Agent) OnToolCallFunc(fn func(ToolCallEvent)) {
 func (a *Agent) OnToolResultFunc(fn func(ToolCallEvent)) {
 	a.mu.Lock()
 	a.onToolResult = fn
+	a.mu.Unlock()
+}
+
+// OnThoughtFunc sets a callback invoked on agent_thought_chunk notifications.
+func (a *Agent) OnThoughtFunc(fn func(string)) {
+	a.mu.Lock()
+	a.onThought = fn
 	a.mu.Unlock()
 }
 
@@ -426,6 +445,7 @@ type AsyncCallbacks struct {
 	OnChunk      func(string)
 	OnToolCall   func(ToolCallEvent)
 	OnToolResult func(ToolCallEvent)
+	OnThought    func(string)
 	OnComplete   func(response string, err error)
 }
 
@@ -439,6 +459,7 @@ func (a *Agent) AskAsync(prompt string, cb AsyncCallbacks) {
 	a.onChunk = cb.OnChunk
 	a.onToolCall = cb.OnToolCall
 	a.onToolResult = cb.OnToolResult
+	a.onThought = cb.OnThought
 	a.mu.Unlock()
 
 	go func() {
@@ -453,6 +474,7 @@ func (a *Agent) AskAsync(prompt string, cb AsyncCallbacks) {
 		a.onChunk = nil
 		a.onToolCall = nil
 		a.onToolResult = nil
+		a.onThought = nil
 		a.mu.Unlock()
 
 		if err != nil {

@@ -231,11 +231,47 @@ func (w *Worker) execute(job *Job) {
 			if title == "" {
 				title = "tool"
 			}
-			ds.ChannelMessageSend(threadID, "⚙️ "+title)
+			// Show kind icon + title + affected files
+			icon := toolKindIcon(evt.Kind)
+			msg := icon + " " + title
+			if len(evt.Locations) > 0 {
+				files := make([]string, 0, len(evt.Locations))
+				for _, loc := range evt.Locations {
+					files = append(files, "`"+loc.Path+"`")
+				}
+				msg += "\n📁 " + strings.Join(files, ", ")
+			}
+			ds.ChannelMessageSend(threadID, msg)
 			swapReaction(ds, job.ChannelID, job.MessageID, "🔄", "⚙️")
 		},
 		OnToolResult: func(evt acp.ToolCallEvent) {
 			swapReaction(ds, job.ChannelID, job.MessageID, "⚙️", "🔄")
+			// Send tool output to thread if meaningful
+			if evt.RawOutput != "" && evt.Status == "completed" {
+				out := evt.RawOutput
+				if len(out) > 1900 {
+					out = out[:1900] + "\n…(truncated)"
+				}
+				ds.ChannelMessageSend(threadID, "```\n"+out+"\n```")
+			} else if evt.Status == "failed" {
+				msg := "❌ " + evt.Title
+				if evt.RawOutput != "" {
+					o := evt.RawOutput
+					if len(o) > 500 {
+						o = o[:500] + "..."
+					}
+					msg += "\n```\n" + o + "\n```"
+				}
+				ds.ChannelMessageSend(threadID, msg)
+			}
+		},
+		OnThought: func(text string) {
+			// Accumulate thought chunks — send as a single collapsed block would be ideal,
+			// but Discord doesn't support spoiler streaming. Just prefix with 💭.
+			if len(text) > 1900 {
+				text = text[:1900] + "…"
+			}
+			ds.ChannelMessageSend(threadID, "💭 "+text)
 		},
 		OnComplete: func(response string, askErr error) {
 			// Capture ctx state BEFORE cancel() — cancel() sets ctx.Err() to Canceled
@@ -431,4 +467,25 @@ func truncateUTF8(s string, maxBytes int) string {
 		maxBytes--
 	}
 	return s[:maxBytes]
+}
+
+func toolKindIcon(kind string) string {
+	switch kind {
+	case "read":
+		return "📖"
+	case "edit":
+		return "✏️"
+	case "delete":
+		return "🗑️"
+	case "execute":
+		return "▶️"
+	case "search":
+		return "🔍"
+	case "fetch":
+		return "🌐"
+	case "think":
+		return "🧠"
+	default:
+		return "⚙️"
+	}
 }

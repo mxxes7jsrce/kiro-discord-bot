@@ -18,16 +18,24 @@ const (
 	UpdateToolCall       = "tool_call"
 	UpdateToolCallUpdate = "tool_call_update"
 	UpdateAgentChunk     = "agent_message_chunk"
+	UpdateAgentThought   = "agent_thought_chunk"
 )
+
+// ToolCallLocation represents a file affected by a tool call.
+type ToolCallLocation struct {
+	Path string `json:"path"`
+	Line *int   `json:"line,omitempty"`
+}
 
 // ToolCallEvent carries parsed tool call notification data.
 type ToolCallEvent struct {
 	ToolCallID string
 	Title      string // human-readable, e.g. "Running: echo hello"
-	Kind       string // "execute"
+	Kind       string // "read", "edit", "execute", "search", "fetch", etc.
 	Status     string // "completed" / "failed" (only in tool_call_update)
 	RawInput   map[string]interface{}
 	RawOutput  string
+	Locations  []ToolCallLocation
 }
 
 // InitializeResult holds the agent's initialize response.
