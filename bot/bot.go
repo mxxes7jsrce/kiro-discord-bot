@@ -56,6 +56,7 @@ type BotConfig struct {
 	AgentProfile       string
 	TrustAllTools      bool
 	TrustTools         string
+	MCPConfigPath      string
 }
 
 func NewFromConfig(cfg BotConfig) (*Bot, error) {
@@ -88,6 +89,7 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 		AgentProfile:       cfg.AgentProfile,
 		TrustAllTools:      cfg.TrustAllTools,
 		TrustTools:         cfg.TrustTools,
+		MCPConfigPath:      cfg.MCPConfigPath,
 	})
 
 	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID, dataDir: cfg.DataDir, cronTimezone: cfg.CronTimezone, version: cfg.BotVersion,

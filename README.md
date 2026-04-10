@@ -107,6 +107,7 @@ CRON_TIMEZONE=Asia/Taipei
 | `KIRO_AGENT` | Agent profile name for kiro-cli `--agent` flag (empty = kiro default) | `` |
 | `TRUST_ALL_TOOLS` | Auto-approve all tool permission requests (`true`/`false`) | `true` |
 | `TRUST_TOOLS` | Trust only specific tools (comma-separated names). Overrides `TRUST_ALL_TOOLS` when set | `` |
+| `MCP_CONFIG_PATH` | Custom path to mcp.json. Default: reads `~/.kiro/settings/mcp.json` + `<cwd>/.kiro/settings/mcp.json` | `` |
 
 ---
 

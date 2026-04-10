@@ -28,6 +28,7 @@ type Config struct {
 	AgentProfile       string
 	TrustAllTools      bool
 	TrustTools         string
+	MCPConfigPath      string
 }
 
 func loadConfig() *Config {
@@ -53,6 +54,7 @@ func loadConfig() *Config {
 		AgentProfile:       envOr("KIRO_AGENT", ""),
 		TrustAllTools:      envOr("TRUST_ALL_TOOLS", "true") == "true",
 		TrustTools:         envOr("TRUST_TOOLS", ""),
+		MCPConfigPath:      envOr("MCP_CONFIG_PATH", ""),
 	}
 }
 

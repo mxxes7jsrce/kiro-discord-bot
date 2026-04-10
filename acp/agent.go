@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -46,6 +47,7 @@ type AgentOptions struct {
 	TrustTools    string // --trust-tools <names>; comma-separated, overrides TrustAllTools
 	BotName       string // clientInfo.name
 	BotVersion    string // clientInfo.version
+	MCPConfigPath string // custom mcp.json path; empty = read from ~/.kiro + <cwd>/.kiro
 }
 
 // StartAgent spawns kiro-cli acp and performs the ACP handshake (initialize + session/new).
@@ -163,10 +165,10 @@ func StartAgent(name, kiroCLI, cwd, model string, opts AgentOptions) (*Agent, er
 	}
 	log.Printf("[agent:%s] pid=%d protocol=%v kiro=%s", name, cmd.Process.Pid, initResp.ProtocolVersion, version)
 
-	// Handshake: session/new — pass empty mcpServers so kiro-cli loads from its own config
+	// Handshake: session/new
 	sessRaw, err := a.transport.Send(MethodNewSession, map[string]interface{}{
 		"cwd":        cwd,
-		"mcpServers": []interface{}{},
+		"mcpServers": loadMCPServers(cwd, opts.MCPConfigPath),
 	})
 	if err != nil {
 		a.Kill()
@@ -550,3 +552,47 @@ func PreflightCheck(kiroCLI string) error {
 	return nil
 }
 
+
+// loadMCPServers reads MCP config and converts to ACP array format.
+// Priority: customPath > <cwd>/.kiro/settings/mcp.json > ~/.kiro/settings/mcp.json
+// Returns empty slice if no config found.
+func loadMCPServers(cwd, customPath string) []interface{} {
+	merged := make(map[string]map[string]interface{})
+
+	// 1. Global: ~/.kiro/settings/mcp.json
+	if home, err := os.UserHomeDir(); err == nil {
+		readMCPFile(filepath.Join(home, ".kiro", "settings", "mcp.json"), merged)
+	}
+
+	// 2. Project: <cwd>/.kiro/settings/mcp.json (overrides global)
+	readMCPFile(filepath.Join(cwd, ".kiro", "settings", "mcp.json"), merged)
+
+	// 3. Custom path (overrides all)
+	if customPath != "" {
+		readMCPFile(customPath, merged)
+	}
+
+	// Convert to ACP array format: [{name, command, args, env}, ...]
+	servers := make([]interface{}, 0, len(merged))
+	for name, cfg := range merged {
+		cfg["name"] = name
+		servers = append(servers, cfg)
+	}
+	return servers
+}
+
+func readMCPFile(path string, dest map[string]map[string]interface{}) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	var cfg struct {
+		MCPServers map[string]map[string]interface{} `json:"mcpServers"`
+	}
+	if json.Unmarshal(data, &cfg) != nil {
+		return
+	}
+	for k, v := range cfg.MCPServers {
+		dest[k] = v
+	}
+}
