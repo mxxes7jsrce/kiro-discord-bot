@@ -203,6 +203,18 @@ All commands also work with `!` prefix (e.g. `!status`, `!reset`).
 | ❌ | Error |
 | ⚠️ | Timed out |
 
+### Thread Visibility
+
+Each task runs in a Discord thread. The bot posts the full work process in real-time:
+
+| Event | Display |
+|-------|---------|
+| Tool start | Kind icon (📖 read, ✏️ edit, ▶️ execute, 🔍 search, 🌐 fetch) + title + affected files |
+| Tool result | Full output in code block (up to 1900 chars per message) |
+| Tool failure | ❌ title + error output |
+| Agent thinking | 💭 thought content |
+| Final response | Complete text, auto-split if > 2000 chars |
+
 ### Recovery
 
 If a response is cut off, use `!resume` to re-post the agent's last output.

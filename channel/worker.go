@@ -250,7 +250,7 @@ func (w *Worker) execute(job *Job) {
 			if evt.RawOutput != "" && evt.Status == "completed" {
 				out := evt.RawOutput
 				if len(out) > 1900 {
-					out = out[:1900] + "\n…(truncated)"
+					out = out[:1900] + L.Get("tool.output_truncated")
 				}
 				ds.ChannelMessageSend(threadID, "```\n"+out+"\n```")
 			} else if evt.Status == "failed" {
@@ -343,7 +343,7 @@ func (w *Worker) execute(job *Job) {
 	w.agent.OnReadErrorFunc(func(err error) {
 		log.Printf("[worker %s] agent read error | user=%s msg=%s elapsed=%s err=%v",
 			w.channelID, job.Username, job.MessageID, time.Since(startTime).Round(time.Millisecond), err)
-		msg := fmt.Sprintf("⚠️ Agent 通訊中斷: %v\n請使用 /reset 重啟", err)
+		msg := fmt.Sprintf("⚠️ "+L.Getf("error.agent_read", err))
 		ds.ChannelMessageSend(threadID, msg)
 		swapReaction(ds, job.ChannelID, job.MessageID, "🔄", "⚠️")
 		swapReaction(ds, job.ChannelID, job.MessageID, "⚙️", "⚠️")
