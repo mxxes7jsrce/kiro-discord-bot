@@ -396,7 +396,7 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 
 		// Transcribe audio files (voice messages + audio attachments)
 		if transcript, rest := b.transcribeAudioFiles(localPaths, m.Attachments); transcript != "" {
-			content = "🎤 " + transcript + "\n" + content
+			content = L.Get("stt.prefix") + transcript + "\n" + content
 			localPaths = rest
 		}
 
@@ -455,7 +455,7 @@ func (b *Bot) handleThreadMessage(ds *discordgo.Session, m *discordgo.MessageCre
 
 	// Transcribe audio files
 	if transcript, rest := b.transcribeAudioFiles(localPaths, m.Attachments); transcript != "" {
-		content = "🎤 " + transcript + "\n" + content
+		content = L.Get("stt.prefix") + transcript + "\n" + content
 		localPaths = rest
 	}
 

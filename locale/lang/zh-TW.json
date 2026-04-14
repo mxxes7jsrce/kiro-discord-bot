@@ -107,5 +107,7 @@
   "thread_agent.limit_reached": "⚠️ 已達討論串 agent 上限，已關閉最久未使用的 agent。",
   "warn.attachments_large": "⚠️ 附件總大小約 %d MB，可能超過處理上限（%d MB），建議分次傳送或調整 MAX_SCANNER_BUFFER_MB 設定。",
   "error.agent_read": "⚠️ Agent 通訊中斷：%v\n請使用 /reset 重啟。",
-  "tool.output_truncated": "\n…（已截斷）"
+  "tool.output_truncated": "\n…（已截斷）",
+  "stt.prefix": "🎤 語音轉錄：\n",
+  "stt.skip_duration": "⏭️ 音訊過長（%.0f 秒 > %d 秒），跳過轉錄。"
 }
