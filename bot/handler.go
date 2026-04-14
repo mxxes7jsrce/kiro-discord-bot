@@ -403,8 +403,10 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 		b.warnIfAttachmentsLarge(ds, m.ChannelID, localPaths)
 
 		// Transcribe audio files (voice messages + audio attachments)
-		if transcript, rest := b.transcribeAudioFiles(localPaths, m.Attachments); transcript != "" {
-			content = L.Get("stt.prefix") + transcript + "\n" + content
+		var transcript string
+		if t, rest := b.transcribeAudioFiles(localPaths, m.Attachments); t != "" {
+			transcript = t
+			content = L.Get("stt.prefix") + t + "\n" + content
 			localPaths = rest
 		}
 
@@ -417,6 +419,7 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 			UserID:      m.Author.ID,
 			Username:    m.Author.Username,
 			Attachments: localPaths,
+			Transcript:  transcript,
 		}
 		if err := b.manager.Enqueue(ds, job); err != nil {
 			ds.MessageReactionRemove(m.ChannelID, m.ID, "⏳", "@me")
@@ -462,8 +465,10 @@ func (b *Bot) handleThreadMessage(ds *discordgo.Session, m *discordgo.MessageCre
 	b.warnIfAttachmentsLarge(ds, threadID, localPaths)
 
 	// Transcribe audio files
-	if transcript, rest := b.transcribeAudioFiles(localPaths, m.Attachments); transcript != "" {
-		content = L.Get("stt.prefix") + transcript + "\n" + content
+	var transcript string
+	if t, rest := b.transcribeAudioFiles(localPaths, m.Attachments); t != "" {
+		transcript = t
+		content = L.Get("stt.prefix") + t + "\n" + content
 		localPaths = rest
 	}
 
@@ -477,6 +482,7 @@ func (b *Bot) handleThreadMessage(ds *discordgo.Session, m *discordgo.MessageCre
 		Username:    m.Author.Username,
 		Attachments: localPaths,
 		ThreadID:    threadID,
+		Transcript:  transcript,
 	}
 	if err := b.manager.EnqueueThread(ds, job, parentChannelID); err != nil {
 		ds.MessageReactionRemove(threadID, m.ID, "⏳", "@me")

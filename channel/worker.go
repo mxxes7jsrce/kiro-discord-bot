@@ -24,6 +24,7 @@ type Job struct {
 	Username    string
 	Attachments []string
 	ThreadID    string // non-empty = follow-up in existing thread, skip thread creation
+	Transcript  string // STT transcription result, shown in thread if non-empty
 }
 
 // Worker manages a per-channel job queue and executes jobs sequentially.
@@ -245,6 +246,9 @@ func (w *Worker) execute(job *Job) {
 	w.cancelMu.Unlock()
 
 	// Post initial status in thread
+	if job.Transcript != "" {
+		ds.ChannelMessageSend(threadID, L.Get("stt.prefix")+job.Transcript)
+	}
 	ds.ChannelMessageSend(threadID, "🔄 "+L.Get("worker.processing"))
 
 	// Setup timeout context as safety net
