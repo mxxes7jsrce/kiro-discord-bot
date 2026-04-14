@@ -107,7 +107,7 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 	}
 	if cfg.STTEnabled && cfg.STTAPIKey != "" {
 		b.sttClient = stt.New(cfg.STTProvider, cfg.STTAPIKey, cfg.STTModel, cfg.STTLanguage)
-		log.Printf("[stt] enabled provider=%s model=%s", cfg.STTProvider, cfg.STTModel)
+		log.Printf("[stt] enabled provider=%s model=%s", cfg.STTProvider, b.sttClient.Model())
 	}
 
 	cronStore, err := heartbeat.NewCronStore(cfg.DataDir)

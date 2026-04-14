@@ -91,6 +91,14 @@ func registerThreadParent(threadID, parentChannelID string) {
 	threadParentMu.Unlock()
 }
 
+func (b *Bot) statusWithSTT(channelID string) string {
+	s := b.manager.Status(channelID)
+	if b.sttClient != nil {
+		s += "\nSTT: `" + b.sttClient.Model() + "`"
+	}
+	return s
+}
+
 // warnIfAttachmentsLarge checks total attachment size and sends a warning if it may exceed the scanner buffer.
 func (b *Bot) warnIfAttachmentsLarge(ds *discordgo.Session, channelID string, paths []string) {
 	if len(paths) == 0 {
@@ -300,7 +308,7 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 		ds.ChannelMessageSend(m.ChannelID, usageMessage())
 
 	case content == "!status":
-		ds.ChannelMessageSend(m.ChannelID, b.manager.Status(m.ChannelID))
+		ds.ChannelMessageSend(m.ChannelID, b.statusWithSTT(m.ChannelID))
 
 	case content == "!cancel":
 		if err := b.manager.Cancel(m.ChannelID); err != nil {
@@ -603,7 +611,7 @@ func (b *Bot) handleSlashCommand(ds *discordgo.Session, i *discordgo.Interaction
 				reply(usageMessage())
 			}
 		case "status":
-			reply(b.manager.Status(channelID))
+			reply(b.statusWithSTT(channelID))
 		case "cancel":
 			if err := b.manager.Cancel(channelID); err != nil {
 				reply(L.Getf("error.generic", err.Error()))

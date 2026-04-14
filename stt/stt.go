@@ -56,6 +56,9 @@ func New(provider, apiKey, model, language string) *Client {
 	}
 }
 
+// Model returns the resolved model name.
+func (c *Client) Model() string { return c.model }
+
 type transcriptionResponse struct {
 	Text string `json:"text"`
 }
