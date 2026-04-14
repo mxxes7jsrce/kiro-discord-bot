@@ -46,6 +46,12 @@ func main() {
 		AgentProfile:       cfg.AgentProfile,
 		TrustAllTools:      cfg.TrustAllTools,
 		TrustTools:         cfg.TrustTools,
+		STTEnabled:         cfg.STTEnabled,
+		STTProvider:        cfg.STTProvider,
+		STTAPIKey:          cfg.STTAPIKey,
+		STTModel:           cfg.STTModel,
+		STTLanguage:        cfg.STTLanguage,
+		STTMaxDurationSec:  cfg.STTMaxDurationSec,
 	})
 	if err != nil {
 		log.Fatal(err)

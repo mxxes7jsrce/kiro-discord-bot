@@ -28,6 +28,12 @@ type Config struct {
 	AgentProfile       string
 	TrustAllTools      bool
 	TrustTools         string
+	STTEnabled         bool
+	STTProvider        string
+	STTAPIKey          string
+	STTModel           string
+	STTLanguage        string
+	STTMaxDurationSec  int
 }
 
 func loadConfig() *Config {
@@ -53,6 +59,12 @@ func loadConfig() *Config {
 		AgentProfile:       envOr("KIRO_AGENT", ""),
 		TrustAllTools:      envOr("TRUST_ALL_TOOLS", "true") == "true",
 		TrustTools:         envOr("TRUST_TOOLS", ""),
+		STTEnabled:         envOr("STT_ENABLED", "false") == "true",
+		STTProvider:        envOr("STT_PROVIDER", "groq"),
+		STTAPIKey:          envOr("STT_API_KEY", ""),
+		STTModel:           envOr("STT_MODEL", ""),
+		STTLanguage:        envOr("STT_LANGUAGE", ""),
+		STTMaxDurationSec:  envInt("STT_MAX_DURATION_SEC", 300),
 	}
 }
 

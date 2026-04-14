@@ -107,6 +107,12 @@ CRON_TIMEZONE=Asia/Taipei
 | `KIRO_AGENT` | Agent profile name for kiro-cli `--agent` flag (empty = kiro default) | `` |
 | `TRUST_ALL_TOOLS` | Auto-approve all tool permission requests (`true`/`false`) | `true` |
 | `TRUST_TOOLS` | Trust only specific tools (comma-separated names). Overrides `TRUST_ALL_TOOLS` when set | `` |
+| `STT_ENABLED` | Enable voice message / audio attachment transcription (`true`/`false`) | `false` |
+| `STT_PROVIDER` | STT provider (`groq` or `openai`) | `groq` |
+| `STT_API_KEY` | API key for the STT provider (required when `STT_ENABLED=true`) | — |
+| `STT_MODEL` | STT model override (empty = provider default: `whisper-large-v3-turbo` for groq, `whisper-1` for openai) | `` |
+| `STT_LANGUAGE` | Language hint in ISO-639-1 (e.g. `zh`, `en`). Empty = auto-detect | `` |
+| `STT_MAX_DURATION_SEC` | Skip transcription for audio longer than N seconds | `300` |
 
 ---
 
@@ -283,6 +289,8 @@ kiro-discord-bot/
 │   ├── agent.go          ACP agent process management (spawn, handshake, ask, stop)
 │   ├── jsonrpc.go        JSON-RPC 2.0 ndjson transport
 │   └── protocol.go       ACP protocol constants and types
+├── stt/
+│   └── stt.go            Speech-to-text client (Groq / OpenAI Whisper)
 ├── cmd/
 │   └── mcp-discord/
 │       └── main.go       Discord MCP server (optional)

@@ -13,6 +13,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/nczz/kiro-discord-bot/channel"
 	L "github.com/nczz/kiro-discord-bot/locale"
+	"github.com/nczz/kiro-discord-bot/stt"
 )
 
 func usageMessage() string { return L.Get("usage_message") }
@@ -112,6 +113,57 @@ func (b *Bot) warnIfAttachmentsLarge(ds *discordgo.Session, channelID string, pa
 	}
 }
 
+
+// transcribeAudioFiles detects audio files in paths, transcribes them via STT,
+// and returns (transcribed text, remaining non-audio paths).
+func (b *Bot) transcribeAudioFiles(paths []string, attachments []*discordgo.MessageAttachment) (string, []string) {
+	if b.sttClient == nil || len(paths) == 0 {
+		return "", paths
+	}
+
+	// Build duration lookup from Discord attachment metadata
+	durMap := make(map[string]float64)
+	for _, att := range attachments {
+		if att.DurationSecs > 0 {
+			durMap[att.Filename] = att.DurationSecs
+		}
+	}
+
+	var transcripts []string
+	var remaining []string
+	for _, p := range paths {
+		if !stt.IsAudioFile(p) {
+			remaining = append(remaining, p)
+			continue
+		}
+		// Check duration limit
+		base := filepath.Base(p)
+		// Strip timestamp prefix (20060102-150405-) to match original filename
+		if idx := strings.Index(base, "-"); idx > 0 {
+			if idx2 := strings.Index(base[idx+1:], "-"); idx2 > 0 {
+				base = base[idx+1+idx2+1:]
+			}
+		}
+		if dur, ok := durMap[base]; ok && b.sttMaxDuration > 0 && dur > float64(b.sttMaxDuration) {
+			log.Printf("[stt] skip %s: duration %.0fs > max %ds", base, dur, b.sttMaxDuration)
+			remaining = append(remaining, p)
+			continue
+		}
+
+		text, err := b.sttClient.Transcribe(p)
+		if err != nil {
+			log.Printf("[stt] transcribe %s: %v", filepath.Base(p), err)
+			remaining = append(remaining, p) // fallback: keep file path
+			continue
+		}
+		if text != "" {
+			transcripts = append(transcripts, text)
+			log.Printf("[stt] transcribed %s (%d chars)", filepath.Base(p), len(text))
+		}
+	}
+
+	return strings.Join(transcripts, "\n"), remaining
+}
 
 // downloadAttachments saves message attachments to DATA_DIR/ch-<channelID>/attachments/ and returns local paths.
 func (b *Bot) downloadAttachments(channelID string, attachments []*discordgo.MessageAttachment) []string {
@@ -341,6 +393,13 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 		// Download attachments if any
 		localPaths := b.downloadAttachments(m.ChannelID, m.Attachments)
 		b.warnIfAttachmentsLarge(ds, m.ChannelID, localPaths)
+
+		// Transcribe audio files (voice messages + audio attachments)
+		if transcript, rest := b.transcribeAudioFiles(localPaths, m.Attachments); transcript != "" {
+			content = "🎤 " + transcript + "\n" + content
+			localPaths = rest
+		}
+
 		prompt := buildPrompt(content, localPaths, m.ChannelID, m.GuildID, m.Author.Username)
 
 		job := &channel.Job{
@@ -393,6 +452,13 @@ func (b *Bot) handleThreadMessage(ds *discordgo.Session, m *discordgo.MessageCre
 	// Build prompt and enqueue to thread agent
 	localPaths := b.downloadAttachments(threadID, m.Attachments)
 	b.warnIfAttachmentsLarge(ds, threadID, localPaths)
+
+	// Transcribe audio files
+	if transcript, rest := b.transcribeAudioFiles(localPaths, m.Attachments); transcript != "" {
+		content = "🎤 " + transcript + "\n" + content
+		localPaths = rest
+	}
+
 	prompt := buildPromptThread(content, localPaths, parentChannelID, threadID, m.GuildID, m.Author.Username)
 
 	job := &channel.Job{

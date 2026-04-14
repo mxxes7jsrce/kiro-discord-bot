@@ -9,6 +9,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/nczz/kiro-discord-bot/channel"
 	"github.com/nczz/kiro-discord-bot/heartbeat"
+	"github.com/nczz/kiro-discord-bot/stt"
 )
 
 type Bot struct {
@@ -23,6 +24,8 @@ type Bot struct {
 	version        string
 	downloadClient *http.Client
 	seen           *seenMessages
+	sttClient      *stt.Client
+	sttMaxDuration int
 }
 
 func New(cfg interface{ GetBotConfig() BotConfig }) (*Bot, error) {
@@ -57,6 +60,12 @@ type BotConfig struct {
 	AgentProfile       string
 	TrustAllTools      bool
 	TrustTools         string
+	STTEnabled         bool
+	STTProvider        string
+	STTAPIKey          string
+	STTModel           string
+	STTLanguage        string
+	STTMaxDurationSec  int
 }
 
 func NewFromConfig(cfg BotConfig) (*Bot, error) {
@@ -94,6 +103,11 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID, dataDir: cfg.DataDir, cronTimezone: cfg.CronTimezone, version: cfg.BotVersion,
 		downloadClient: &http.Client{Timeout: time.Duration(cfg.DownloadTimeoutSec) * time.Second},
 		seen:           newSeenMessages(),
+		sttMaxDuration: cfg.STTMaxDurationSec,
+	}
+	if cfg.STTEnabled && cfg.STTAPIKey != "" {
+		b.sttClient = stt.New(cfg.STTProvider, cfg.STTAPIKey, cfg.STTModel, cfg.STTLanguage)
+		log.Printf("[stt] enabled provider=%s model=%s", cfg.STTProvider, cfg.STTModel)
 	}
 
 	cronStore, err := heartbeat.NewCronStore(cfg.DataDir)
