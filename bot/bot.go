@@ -22,6 +22,7 @@ type Bot struct {
 	cronTimezone   string
 	version        string
 	downloadClient *http.Client
+	seen           *seenMessages
 }
 
 func New(cfg interface{ GetBotConfig() BotConfig }) (*Bot, error) {
@@ -92,6 +93,7 @@ func NewFromConfig(cfg BotConfig) (*Bot, error) {
 
 	b := &Bot{discord: ds, manager: manager, guildID: cfg.GuildID, dataDir: cfg.DataDir, cronTimezone: cfg.CronTimezone, version: cfg.BotVersion,
 		downloadClient: &http.Client{Timeout: time.Duration(cfg.DownloadTimeoutSec) * time.Second},
+		seen:           newSeenMessages(),
 	}
 
 	cronStore, err := heartbeat.NewCronStore(cfg.DataDir)

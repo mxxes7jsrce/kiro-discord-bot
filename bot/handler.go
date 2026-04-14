@@ -23,6 +23,41 @@ var (
 	threadParentCache = make(map[string]string) // threadID → parentChannelID, "" = not a thread
 )
 
+// seenMessages is a TTL-based set to deduplicate Discord MESSAGE_CREATE events
+// that may be replayed during gateway reconnections.
+type seenMessages struct {
+	mu      sync.Mutex
+	entries map[string]time.Time
+}
+
+func newSeenMessages() *seenMessages {
+	s := &seenMessages{entries: make(map[string]time.Time)}
+	go func() {
+		for range time.Tick(60 * time.Second) {
+			s.mu.Lock()
+			cutoff := time.Now().Add(-5 * time.Minute)
+			for id, t := range s.entries {
+				if t.Before(cutoff) {
+					delete(s.entries, id)
+				}
+			}
+			s.mu.Unlock()
+		}
+	}()
+	return s
+}
+
+// Mark returns true if the message ID was already seen (duplicate).
+func (s *seenMessages) Mark(id string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, dup := s.entries[id]; dup {
+		return true
+	}
+	s.entries[id] = time.Now()
+	return false
+}
+
 // resolveThreadParent returns the parent channel ID if channelID is a thread, or "" if not.
 func resolveThreadParent(ds *discordgo.Session, channelID string) string {
 	threadParentMu.RLock()
@@ -149,6 +184,11 @@ func (b *Bot) handleMessage(ds *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	// Ignore bot's own messages
 	if m.Author.ID == ds.State.User.ID {
+		return
+	}
+
+	// Deduplicate: skip if this message ID was already processed (gateway reconnect replay)
+	if b.seen.Mark(m.ID) {
 		return
 	}
 
