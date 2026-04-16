@@ -83,16 +83,8 @@ After completing the steps above, tell the user:
 | `discord_list_threads` | List active threads in a guild |
 | `discord_remove_reaction` | Remove a reaction from a message |
 | `discord_get_reactions` | Get users who reacted with a specific emoji |
-| `discord_edit_channel_topic` | Edit a channel's topic |
-| `discord_list_roles` | List roles in a guild |
-| `discord_get_user` | Get info about a specific user |
 
-## Usage Hint
+## Notes (Personal)
 
-Every user message forwarded to the agent includes a context header:
-
-```
-[Discord context] channel_id=<ID> guild_id=<ID>
-```
-
-Use these IDs directly with the tools — no need to ask the user for them.
+- Tested on Ubuntu 22.04 with Go 1.22. On macOS you may need to use `source` instead of `.` in the shell command if using a non-POSIX shell.
+- Make sure your `.env` file has a newline at the end, otherwise the last variable may not be sourced correctly.
