@@ -154,11 +154,6 @@ func (m *Manager) Enqueue(ds *discordgo.Session, job *Job) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Inject memory into prompt
-	if prefix := m.BuildMemoryPrefix(job.ChannelID); prefix != "" {
-		job.Prompt = prefix + job.Prompt
-	}
-
 	worker, err := m.ensureWorker(job.ChannelID)
 	if err != nil {
 		return err
@@ -509,6 +504,11 @@ func (m *Manager) startAgentAndWorker(channelID string) (*Worker, error) {
 
 	w := NewWorker(channelID, agent, m.queueBufSize, m.askTimeoutSec, m.streamUpdateSec, m.threadArchive, m.logger, model)
 	w.SetHistoryPrefix(historyCtx)
+	w.OnMemoryPrefixFunc(func() string {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		return m.BuildMemoryPrefix(channelID)
+	})
 	w.Start()
 	m.workers[channelID] = w
 	return w, nil
@@ -626,11 +626,6 @@ func (m *Manager) EnqueueThread(ds *discordgo.Session, job *Job, parentChannelID
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Inject memory from parent channel into prompt
-	if prefix := m.BuildMemoryPrefix(parentChannelID); prefix != "" {
-		job.Prompt = prefix + job.Prompt
-	}
-
 	entry, ok := m.threadAgents[job.ThreadID]
 	if ok && !entry.agent.IsAlive() {
 		// Dead agent — clean up and re-spawn
@@ -707,6 +702,11 @@ func (m *Manager) spawnThreadAgent(threadID, parentChannelID string) (*threadAge
 	w := NewWorker("thread-"+threadID, agent, m.queueBufSize, m.askTimeoutSec, m.streamUpdateSec, 0, m.logger, model)
 	w.SetHistoryPrefix(historyCtx)
 	w.OnActivityFunc(func() { m.TouchThreadAgent(threadID) })
+	w.OnMemoryPrefixFunc(func() string {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		return m.BuildMemoryPrefix(parentChannelID)
+	})
 	w.Start()
 	entry.worker = w
 

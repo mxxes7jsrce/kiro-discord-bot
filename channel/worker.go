@@ -50,6 +50,8 @@ type Worker struct {
 
 	onActivity func() // called during work to signal liveness (prevents idle cleanup)
 
+	memoryPrefix func() string // returns memory+flash prefix to inject into prompts
+
 	historyPrefix string // prepended to first job's prompt, then cleared
 }
 
@@ -70,6 +72,9 @@ func NewWorker(channelID string, agent *acp.Agent, bufSize, askTimeoutSec, strea
 
 // OnActivityFunc sets a callback invoked during work to signal liveness.
 func (w *Worker) OnActivityFunc(fn func()) { w.onActivity = fn }
+
+// OnMemoryPrefixFunc sets a callback that returns memory rules to prepend to prompts.
+func (w *Worker) OnMemoryPrefixFunc(fn func() string) { w.memoryPrefix = fn }
 
 // SetHistoryPrefix sets conversation history to prepend to the first job's prompt.
 func (w *Worker) SetHistoryPrefix(s string) { w.historyPrefix = s }
@@ -417,6 +422,13 @@ func (w *Worker) execute(job *Job) {
 	if w.historyPrefix != "" {
 		prompt = w.historyPrefix + prompt
 		w.historyPrefix = ""
+	}
+
+	// Inject memory rules (after thread title extraction, before sending to agent)
+	if w.memoryPrefix != nil {
+		if mp := w.memoryPrefix(); mp != "" {
+			prompt = mp + prompt
+		}
 	}
 
 	w.agent.AskAsync(prompt, callbacks)
