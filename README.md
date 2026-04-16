@@ -1,15 +1,58 @@
 # kiro-discord-bot
 
-Turn any Discord channel into an AI-powered workspace. This bot connects Discord to [kiro-cli](https://kiro.dev) AI agents directly via the Agent Client Protocol (ACP) over stdio, giving your team on-demand access to coding assistants, DevOps automation, scheduled tasks, and more — all from the chat interface you already use.
+**A trainable AI agent that lives in Discord — binds to your codebase, remembers your rules, and gets smarter the more you use it.**
 
-**What you can do:**
-- 💬 Chat with AI agents per channel — each channel gets its own isolated session and project context
-- 🔧 Let agents read/write code, run commands, and manage infrastructure in your project directories
-- 🔄 Switch between models on the fly — per channel, no restart needed
-- ⏰ Schedule recurring tasks with cron — agents check servers, run tests, generate reports on autopilot
-- 🔔 Set one-time reminders — natural language like "in 30 minutes" or "tomorrow 9am" just works
-- 🩺 Auto-healing — dead agents are detected and restarted automatically
-- 📝 Full conversation logs — every interaction is recorded in JSONL for audit and analysis
+This bot connects Discord to [kiro-cli](https://kiro.dev) AI agents via the Agent Client Protocol (ACP) over stdio. It's not a chatbot — it's a full development agent workspace that grows with you.
+
+### This is not a chatbot
+
+Most AI bots start from zero every conversation. kiro-discord-bot is different:
+
+🧠 **Remembers** — Persistent memory rules teach the agent your preferences, coding style, and project conventions. They stick across sessions forever.
+
+⚡ **Adapts** — Flash memory lets you set session-scoped emphasis for the current task, then discard it cleanly.
+
+📂 **Knows your code** — Each channel binds to a project directory. The agent reads/writes code, runs tests, manages infrastructure — in your actual repo.
+
+📐 **Follows your architecture** — Steering files (`.kiro/steering/*.md`) define module boundaries, build commands, and rules the agent must follow.
+
+🔧 **Grows capabilities** — MCP plugins extend what the agent can do: Discord operations, image/video generation, any API you need.
+
+⏰ **Works autonomously** — Cron schedules let the agent check servers, run reports, and automate DevOps on autopilot.
+
+📈 **Gets stronger over time** — Memory + steering + conversation history + MCP tools compound. Day 1 it's helpful. Day 30 it's your team member.
+
+### Train your agent
+
+```
+Day 1  — Bind a project, agent starts learning your codebase
+         !start /home/user/my-project
+
+Day 3  — Teach it your rules
+         !memory add Always respond in Traditional Chinese
+         !memory add Commit messages in English, conventional commits format
+
+Day 7  — Add steering files for architecture boundaries
+         .kiro/steering/project.md → build commands, module rules, never-do list
+
+Day 14 — Set up autonomous schedules
+         /cron → Daily 9am server health check, compare with yesterday
+
+Day 30 — Extend capabilities with MCP plugins
+         Discord MCP → agent reads messages, sends notifications across channels
+         Media MCP → agent generates images, videos, music, speech
+```
+
+### Features
+
+- 💬 Per-channel isolated sessions with project context
+- 🔧 Agents read/write code, run commands, manage infrastructure
+- 🧠 Persistent memory rules + session-scoped flash memory
+- 🔄 Switch models on the fly — per channel, no restart
+- ⏰ Cron scheduling + one-time natural language reminders
+- 🩺 Auto-healing — dead agents detected and restarted
+- 📝 Full JSONL conversation logs for audit and analysis
+- 🧵 Thread-based execution with real-time tool visibility
 
 **Created:** 2026-03-21 | **Language:** Go
 
@@ -495,9 +538,52 @@ The agent will read the guide, build the binary, update `mcp.json`, and prompt y
 
 ---
 
-## 部署說明（中文）
+## 中文說明
 
-### 前置需求
+**一個住在 Discord 裡的可訓練 AI agent — 綁定你的 codebase、記住你的規矩、越用越強。**
+
+### 這不是聊天機器人
+
+一般 AI bot 每次對話都從零開始。kiro-discord-bot 不同：
+
+🧠 **會記住** — 永久記憶規則讓 agent 記住你的偏好、coding style、專案規範，跨 session 永久生效。
+
+⚡ **能聚焦** — 閃存記憶讓你針對當前任務設定重點強調，用完即丟不污染未來 session。
+
+📂 **懂你的 code** — 每個頻道綁定一個專案目錄，agent 能讀寫程式碼、跑測試、操作基礎設施。
+
+📐 **遵守架構** — Steering 文件（`.kiro/steering/*.md`）定義模組邊界、build 指令、禁止事項。
+
+🔧 **能擴充** — MCP 插件擴展 agent 能力：Discord 操作、圖片/影片生成、任何 API。
+
+⏰ **會自己做事** — Cron 排程讓 agent 定時巡檢伺服器、跑報告、自動化維運。
+
+📈 **越用越強** — Memory + Steering + 對話歷史 + MCP 工具持續累積。第一天它能幫忙，第三十天它是你的隊友。
+
+### 養成你的 Agent
+
+```
+Day 1  — 綁定專案，agent 開始認識你的 codebase
+         !start /home/user/my-project
+
+Day 3  — 教它你的規矩
+         !memory add 永遠用繁體中文回答
+         !memory add commit message 一律用英文，遵循 conventional commits
+
+Day 7  — 加入 steering 文件，定義專案架構邊界
+         .kiro/steering/project.md → build 指令、模組規則、禁止事項
+
+Day 14 — 設定自動化排程
+         /cron → 每天 9 點檢查伺服器健康狀態，跟昨天比較
+
+Day 30 — 擴充能力
+         Discord MCP → agent 能主動讀訊息、發通知、跨頻道協作
+         Media MCP → agent 能生成圖片、影片、音樂、語音
+```
+
+### 部署
+
+#### 前置需求
 
 - Go 1.21+
 - 已安裝並登入 [kiro-cli](https://cli.kiro.dev/install) 1.29+
