@@ -84,7 +84,8 @@ After completing the steps above, tell the user:
 | `discord_remove_reaction` | Remove a reaction from a message |
 | `discord_get_reactions` | Get users who reacted with a specific emoji |
 
-## Notes (Personal)
+## Troubleshooting
 
-- Tested on Ubuntu 22.04 with Go 1.22. On macOS you may need to use `source` instead of `.` in the shell command if using a non-POSIX shell.
-- Make sure your `.env` file has a newline at the end, otherwise the last variable may not be sourced correctly.
+- **Binary not found:** Make sure you ran the build step from the project root and that the `mcp-discord-server` binary exists in the project directory.
+- **Token errors:** Double-check that your `.env` file contains a valid `DISCORD_TOKEN` and that the path in `mcp.json` is correct.
+- **MCP not loading:** Confirm `mcp.json` is valid JSON — a trailing comma or syntax error will silently prevent all MCP servers from loading.
