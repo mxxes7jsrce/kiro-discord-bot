@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +14,8 @@ import (
 	"github.com/nczz/kiro-discord-bot/acp"
 	L "github.com/nczz/kiro-discord-bot/locale"
 )
+
+var reMention = regexp.MustCompile(`<@!?\d+>`)
 
 // Job represents a single user message to be processed.
 type Job struct {
@@ -230,6 +233,8 @@ func (w *Worker) execute(job *Job) {
 				threadName = threadName[idx+2:]
 			}
 		}
+		threadName = strings.TrimSpace(threadName)
+		threadName = reMention.ReplaceAllString(threadName, "")
 		threadName = strings.TrimSpace(threadName)
 		if len(threadName) > 95 {
 			threadName = truncateUTF8(threadName, 92) + "..."
