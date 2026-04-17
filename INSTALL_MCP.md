@@ -57,6 +57,8 @@ This sources `DISCORD_TOKEN` from the project `.env` file at startup — no toke
 
 > **Tip (Linux/WSL):** On Linux or WSL, make sure the binary is executable after building: `chmod +x mcp-discord-server`
 
+> **Personal note:** I keep my `.env` file outside the repo directory (e.g. `~/.config/kiro-discord-bot/.env`) and symlink it here with `ln -s ~/.config/kiro-discord-bot/.env .env`. This avoids accidentally committing secrets even if `.gitignore` is misconfigured.
+
 ### Step 4: Restart the agent session
 
 After completing the steps above, tell the user:
@@ -82,6 +84,4 @@ After completing the steps above, tell the user:
 | `discord_delete_message` | Delete a message |
 | `discord_get_message` | Get a single message by ID |
 | `discord_send_embed` | Send a rich embed message |
-| `discord_pin_message` | Pin or unpin a message |
-| `discord_create_thread` | Create a thread from a message |
-| `discord_list_threads`
+| `discord_pin` | Pin a message in a channel |
