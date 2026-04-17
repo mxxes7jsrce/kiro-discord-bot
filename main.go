@@ -6,64 +6,65 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/nczz/kiro-discord-bot/acp"
-	"github.com/nczz/kiro-discord-bot/bot"
-	"github.com/nczz/kiro-discord-bot/locale"
+	"github.com/bwmarrin/discordgo"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	cfg := loadConfig()
-	locale.Load(cfg.BotLocale)
-
-	// Preflight check
-	if os.Getenv("SKIP_PREFLIGHT") == "" {
-		if err := acp.PreflightCheck(cfg.KiroCLIPath); err != nil {
-			log.Fatalf("[preflight] FATAL: %v — kiro-cli may have updated its ACP protocol", err)
-		}
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using environment variables")
 	}
 
-	log.Printf("kiro-discord-bot %s starting", Version)
+	token := os.Getenv("DISCORD_TOKEN")
+	if token == "" {
+		log.Fatal("DISCORD_TOKEN environment variable is required")
+	}
 
-	b, err := bot.NewFromConfig(bot.BotConfig{
-		DiscordToken:       cfg.DiscordToken,
-		KiroCLIPath:        cfg.KiroCLIPath,
-		DefaultCWD:         cfg.DefaultCWD,
-		DataDir:            cfg.DataDir,
-		QueueBufferSize:    cfg.QueueBufferSize,
-		AskTimeoutSec:      cfg.AskTimeoutSec,
-		StreamUpdateSec:    cfg.StreamUpdateSec,
-		ThreadAutoArchive:  cfg.ThreadAutoArchive,
-		GuildID:            cfg.DiscordGuildID,
-		KiroModel:          cfg.KiroModel,
-		HeartbeatSec:       cfg.HeartbeatSec,
-		AttRetainDays:      cfg.AttRetainDays,
-		CronTimezone:       cfg.CronTimezone,
-		BotVersion:         Version,
-		DownloadTimeoutSec: cfg.DownloadTimeoutSec,
-		ThreadAgentMax:     cfg.ThreadAgentMax,
-		ThreadAgentIdleSec: cfg.ThreadAgentIdleSec,
-		MaxScannerBuffer:   cfg.MaxScannerBuffer,
-		AgentProfile:       cfg.AgentProfile,
-		TrustAllTools:      cfg.TrustAllTools,
-		TrustTools:         cfg.TrustTools,
-		STTEnabled:         cfg.STTEnabled,
-		STTProvider:        cfg.STTProvider,
-		STTAPIKey:          cfg.STTAPIKey,
-		STTModel:           cfg.STTModel,
-		STTLanguage:        cfg.STTLanguage,
-		STTMaxDurationSec:  cfg.STTMaxDurationSec,
-	})
+	// Create a new Discord session
+	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error creating Discord session: %v", err)
 	}
-	if err := b.Start(); err != nil {
-		log.Fatal(err)
-	}
-	log.Println("Bot running. Ctrl+C to stop.")
 
+	// Register event handlers
+	dg.AddHandler(onReady)
+	dg.AddHandler(onMessageCreate)
+
+	// Set intents
+	dg.Identify.Intents = discordgo.IntentsGuilds |
+		discordgo.IntentsGuildMessages |
+		discordgo.IntentsMessageContent
+
+	// Open a websocket connection to Discord
+	if err := dg.Open(); err != nil {
+		log.Fatalf("Error opening Discord connection: %v", err)
+	}
+	defer dg.Close()
+
+	log.Println("Kiro Discord Bot is running. Press CTRL+C to exit.")
+
+	// Wait for termination signal
 	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
 
-	b.Stop()
+	log.Println("Shutting down...")
+}
+
+// onReady is called when the bot successfully connects to Discord
+func onReady(s *discordgo.Session, event *discordgo.Ready) {
+	log.Printf("Logged in as: %v#%v", s.State.User.Username, s.State.User.Discriminator)
+	s.UpdateGameStatus(0, "kiro-discord-bot")
+}
+
+// onMessageCreate is called whenever a new message is created in a channel the bot has access to
+func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// Ignore messages from the bot itself
+	if m.Author.ID == s.State.User.ID {
+		return
+	}
+
+	// Route commands to the command handler
+	handleCommand(s, m)
 }
