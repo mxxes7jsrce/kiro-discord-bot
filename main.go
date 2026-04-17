@@ -55,7 +55,8 @@ func main() {
 // onReady is called when the bot successfully connects to Discord
 func onReady(s *discordgo.Session, event *discordgo.Ready) {
 	log.Printf("Logged in as: %v#%v", s.State.User.Username, s.State.User.Discriminator)
-	s.UpdateGameStatus(0, "kiro-discord-bot")
+	// Customized status message for my personal instance
+	s.UpdateGameStatus(0, "with code 🛠️")
 }
 
 // onMessageCreate is called whenever a new message is created in a channel the bot has access to
