@@ -53,6 +53,8 @@ For example, if the project is at `/home/user/kiro-discord-bot`:
 
 This sources `DISCORD_TOKEN` from the project `.env` file at startup — no token duplication needed.
 
+> **Tip (macOS):** If you're on macOS, the binary path might need to be absolute and the `.env` file must not contain any `export` keywords — just `KEY=VALUE` pairs.
+
 ### Step 4: Restart the agent session
 
 After completing the steps above, tell the user:
@@ -83,9 +85,3 @@ After completing the steps above, tell the user:
 | `discord_list_threads` | List active threads in a guild |
 | `discord_remove_reaction` | Remove a reaction from a message |
 | `discord_get_reactions` | Get users who reacted with a specific emoji |
-
-## Troubleshooting
-
-- **Binary not found:** Make sure you ran the build step from the project root and that the `mcp-discord-server` binary exists in the project directory.
-- **Token errors:** Double-check that your `.env` file contains a valid `DISCORD_TOKEN` and that the path in `mcp.json` is correct.
-- **MCP not loading:** Confirm `mcp.json` is valid JSON — a trailing comma or syntax error will silently prevent all MCP servers from loading.
