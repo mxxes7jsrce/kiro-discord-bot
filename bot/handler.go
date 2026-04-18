@@ -58,6 +58,8 @@ func (h *Handler) OnMessageCreate(s *discordgo.Session, m *discordgo.MessageCrea
 
 // handlePing responds with a simple pong message.
 func (h *Handler) handlePing(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// Also log who sent the ping, useful for debugging latency complaints.
+	log.Printf("handlePing: ping received from %s#%s", m.Author.Username, m.Author.Discriminator)
 	_, err := s.ChannelMessageSend(m.ChannelID, "Pong! 🏓")
 	if err != nil {
 		log.Printf("handlePing: failed to send message: %v", err)
