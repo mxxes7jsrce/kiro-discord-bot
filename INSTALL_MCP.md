@@ -63,6 +63,8 @@ This sources `DISCORD_TOKEN` from the project `.env` file at startup — no toke
 
 > **Personal note:** I created a small shell alias `alias build-mcp='go build -o mcp-discord-server ./cmd/mcp-discord/ && chmod +x mcp-discord-server'` in my `.bashrc` so I don't have to remember the full build command after pulling upstream changes.
 
+> **Personal note:** If the agent fails to connect after restart, check that the MCP server process is actually running with `pgrep -a mcp-discord-server`. I've occasionally had stale processes from a previous session interfere — `pkill mcp-discord-server` clears it up before retrying.
+
 ### Step 4: Restart the agent session
 
 After completing the steps above, tell the user:
@@ -76,8 +78,4 @@ After completing the steps above, tell the user:
 | `discord_list_channels` | List text channels in a guild |
 | `discord_read_messages` | Read recent messages from a channel |
 | `discord_send_message` | Send a message to a channel |
-| `discord_reply_message` | Reply to a specific message |
-| `discord_add_reaction` | Add a reaction emoji to a message |
-| `discord_list_members` | List members of a guild |
-| `discord_search_messages` | Search recent messages by keyword |
-| `discord_channel_info` | Get detailed info about a channel |
+| `discord_reply_message` | Reply to a specific me
