@@ -2,6 +2,7 @@ package bot
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -40,11 +41,20 @@ func (h *Handler) handlePing(s *discordgo.Session, m *discordgo.MessageCreate, a
 	s.ChannelMessageSend(m.ChannelID, "Pong! 🏓")
 }
 
-// handleHelp lists all registered commands and their descriptions
+// handleHelp lists all registered commands and their descriptions (sorted alphabetically)
 func (h *Handler) handleHelp(s *discordgo.Session, m *discordgo.MessageCreate, args []string) {
 	var sb strings.Builder
 	sb.WriteString("**Available Commands:**\n")
-	for _, cmd := range h.commands {
+
+	// Sort command names so the output is consistent
+	names := make([]string, 0, len(h.commands))
+	for name := range h.commands {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		cmd := h.commands[name]
 		sb.WriteString(fmt.Sprintf("`%s%s` — %s\n", h.prefix, cmd.Name, cmd.Description))
 	}
 	s.ChannelMessageSend(m.ChannelID, sb.String())
