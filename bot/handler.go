@@ -66,6 +66,7 @@ func (h *Handler) handlePing(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 // handleHelp sends a list of available commands to the channel.
 func (h *Handler) handleHelp(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// Note: update this list whenever new commands are added.
 	help := "**Available Commands**\n" +
 		h.Prefix + "ping — Check if the bot is alive\n" +
 		h.Prefix + "help — Show this help message\n"
