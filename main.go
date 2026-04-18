@@ -57,6 +57,10 @@ func onReady(s *discordgo.Session, event *discordgo.Ready) {
 	log.Printf("Logged in as: %v#%v", s.State.User.Username, s.State.User.Discriminator)
 	// Customized status message for my personal instance
 	s.UpdateGameStatus(0, "with Go 🚀 | !help")
+	// Log which guilds the bot is connected to on startup
+	for _, guild := range event.Guilds {
+		log.Printf("Connected to guild: %v (%v)", guild.ID, guild.ID)
+	}
 }
 
 // onMessageCreate is called whenever a new message is created in a channel the bot has access to
