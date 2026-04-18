@@ -61,6 +61,8 @@ This sources `DISCORD_TOKEN` from the project `.env` file at startup — no toke
 
 > **Personal note:** I also add `mcp-discord-server` to `.git/info/exclude` locally so the built binary never shows up as an untracked file without touching the shared `.gitignore`.
 
+> **Personal note:** I created a small shell alias `alias build-mcp='go build -o mcp-discord-server ./cmd/mcp-discord/ && chmod +x mcp-discord-server'` in my `.bashrc` so I don't have to remember the full build command after pulling upstream changes.
+
 ### Step 4: Restart the agent session
 
 After completing the steps above, tell the user:
@@ -79,6 +81,3 @@ After completing the steps above, tell the user:
 | `discord_list_members` | List members of a guild |
 | `discord_search_messages` | Search recent messages by keyword |
 | `discord_channel_info` | Get detailed info about a channel |
-| `discord_send_file` | Upload a local file to a channel as an attachment |
-| `discord_list_attachments` | List file attachments from recent messages |
-| `discord_download_attachment` | Download a file attachment from a message |
