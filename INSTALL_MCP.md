@@ -59,6 +59,8 @@ This sources `DISCORD_TOKEN` from the project `.env` file at startup — no toke
 
 > **Personal note:** I keep my `.env` file outside the repo directory (e.g. `~/.config/kiro-discord-bot/.env`) and symlink it here with `ln -s ~/.config/kiro-discord-bot/.env .env`. This avoids accidentally committing secrets even if `.gitignore` is misconfigured.
 
+> **Personal note:** I also add `mcp-discord-server` to `.git/info/exclude` locally so the built binary never shows up as an untracked file without touching the shared `.gitignore`.
+
 ### Step 4: Restart the agent session
 
 After completing the steps above, tell the user:
@@ -79,9 +81,4 @@ After completing the steps above, tell the user:
 | `discord_channel_info` | Get detailed info about a channel |
 | `discord_send_file` | Upload a local file to a channel as an attachment |
 | `discord_list_attachments` | List file attachments from recent messages |
-| `discord_download_attachment` | Download a Discord attachment to a local file |
-| `discord_edit_message` | Edit a message |
-| `discord_delete_message` | Delete a message |
-| `discord_get_message` | Get a single message by ID |
-| `discord_send_embed` | Send a rich embed message |
-| `discord_pin` | Pin a message in a channel |
+| `discord_download_attachment` | Download a file attachment from a message |
