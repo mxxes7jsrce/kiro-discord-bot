@@ -72,7 +72,8 @@ func (h *Handler) handleHelp(s *discordgo.Session, m *discordgo.MessageCreate) {
 	help := "**Available Commands**\n" +
 		h.Prefix + "ping — Check if the bot is alive\n" +
 		h.Prefix + "help — Show this help message\n" +
-		"\n_Tip: all commands are case-insensitive._"
+		"\n_Tip: all commands are case-insensitive._" +
+		"\n_Prefix: `" + h.Prefix + "`_"
 
 	_, err := s.ChannelMessageSend(m.ChannelID, help)
 	if err != nil {
