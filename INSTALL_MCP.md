@@ -65,12 +65,4 @@ This sources `DISCORD_TOKEN` from the project `.env` file at startup — no toke
 
 > **Personal note:** If the agent fails to connect after restart, check that the MCP server process is actually running with `pgrep -a mcp-discord-server`. I've occasionally had stale processes from a previous session interfere — `pkill mcp-discord-server` clears it up before retrying.
 
-> **Personal note:** I run the MCP server behind a simple health-check wrapper script that auto-restarts it if it crashes unexpectedly. Saved me a few times when the Discord gateway dropped the connection overnight. The wrapper is just a `while true; do ./mcp-discord-server; sleep 2; done` loop in a `tmux` session.
-
-### Step 4: Restart the agent session
-
-After completing the steps above, tell the user:
-
-> MCP server installed. Please run `/reset` or `!reset` to restart the agent session. After restart, I'll have direct access to Discord.
-
-## Available Tools (after e
+> **Personal note:** I run the MCP server behind a simple health-check wrapper script that auto-restarts it if it crashes unexpectedly. Saved me a few times when the Discord gateway dropped the connection overnight. The wrapper is just a `while true; do ./mcp-discord-server; echo "restarting in 5s..."; sleep 5; done` loop in a small shell script. I start it in a `tmux` session named `mcp` so I can easily attach and check logs: `tmux new-session -d -s mcp './restart-mcp.sh'`.
