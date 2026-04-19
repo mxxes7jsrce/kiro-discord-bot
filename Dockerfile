@@ -7,7 +7,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o bot .
 
 # Runtime stage
-FROM alpine:3.19
+FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /app/bot .
