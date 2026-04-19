@@ -75,7 +75,13 @@ func (h *Handler) handleHelp(s *discordgo.Session, m *discordgo.MessageCreate) {
 		"\n_Tip: all commands are case-insensitive._" +
 		"\n_Prefix: `" + h.Prefix + "`_"
 
-	_, err := s.ChannelMessageSend(m.ChannelID, help)
+	// Send the help message as a DM instead of cluttering the channel.
+	ch, err := s.UserChannelCreate(m.Author.ID)
+	if err != nil {
+		log.Printf("handleHelp: failed to create DM channel: %v", err)
+		return
+	}
+	_, err = s.ChannelMessageSend(ch.ID, help)
 	if err != nil {
 		log.Printf("handleHelp: failed to send message: %v", err)
 	}
