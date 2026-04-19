@@ -58,8 +58,8 @@ func (h *Handler) handleHelp(s *discordgo.Session, m *discordgo.MessageCreate, a
 		sb.WriteString(fmt.Sprintf("`%s%s` — %s\n", h.prefix, cmd.Name, cmd.Description))
 	}
 
-	// Add a footer note so users know where to find the source
-	sb.WriteString("\n_Source: github.com/bwmarrin/discordgo_")
+	// Point to my fork rather than the upstream discordgo library
+	sb.WriteString("\n_Source: github.com/nczz/kiro-discord-bot_")
 
 	s.ChannelMessageSend(m.ChannelID, sb.String())
 }
