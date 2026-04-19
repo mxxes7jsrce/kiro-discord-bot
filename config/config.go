@@ -37,8 +37,8 @@ func Load() (*Config, error) {
 
 	prefix := os.Getenv("COMMAND_PREFIX")
 	if prefix == "" {
-		// Using ">" as default prefix to avoid conflicts with other bots on my server
-		prefix = ">"
+		// Using "!" as default prefix - more familiar for users coming from other bots
+		prefix = "!"
 	}
 
 	return &Config{
