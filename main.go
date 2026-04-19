@@ -59,7 +59,7 @@ func onReady(s *discordgo.Session, event *discordgo.Ready) {
 	s.UpdateGameStatus(0, "with Go 🚀 | !help")
 	// Log which guilds the bot is connected to on startup
 	for _, guild := range event.Guilds {
-		log.Printf("Connected to guild: %v (%v)", guild.ID, guild.ID)
+		log.Printf("Connected to guild: %v", guild.ID)
 	}
 }
 
@@ -67,6 +67,11 @@ func onReady(s *discordgo.Session, event *discordgo.Ready) {
 func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// Ignore messages from the bot itself
 	if m.Author.ID == s.State.User.ID {
+		return
+	}
+
+	// Ignore messages from other bots
+	if m.Author.Bot {
 		return
 	}
 
