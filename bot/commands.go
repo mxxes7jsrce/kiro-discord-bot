@@ -57,6 +57,10 @@ func (h *Handler) handleHelp(s *discordgo.Session, m *discordgo.MessageCreate, a
 		cmd := h.commands[name]
 		sb.WriteString(fmt.Sprintf("`%s%s` — %s\n", h.prefix, cmd.Name, cmd.Description))
 	}
+
+	// Add a footer note so users know where to find the source
+	sb.WriteString("\n_Source: github.com/bwmarrin/discordgo_")
+
 	s.ChannelMessageSend(m.ChannelID, sb.String())
 }
 
@@ -65,7 +69,7 @@ func (h *Handler) handleInfo(s *discordgo.Session, m *discordgo.MessageCreate, a
 	embed := &discordgo.MessageEmbed{
 		Title:       "Kiro Discord Bot",
 		Description: "A Discord bot built with Go and discordgo.",
-		Color:       0x7289DA,
+		Color:       0x43B581, // changed from blurple to Discord green
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name:   "Prefix",
