@@ -69,7 +69,7 @@ func (h *Handler) handleInfo(s *discordgo.Session, m *discordgo.MessageCreate, a
 	embed := &discordgo.MessageEmbed{
 		Title:       "Kiro Discord Bot",
 		Description: "A Discord bot built with Go and discordgo.",
-		Color:       0x57F287, // Discord green — I prefer this over blurple, easier to spot in my server
+		Color:       0x5865F2, // Discord blurple — switching back to the standard brand color
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name:   "Prefix",
